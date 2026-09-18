@@ -1,0 +1,7 @@
+node_modules/
+test-results/
+playwright-report/
+allure-results/
+allure-report/
+.playwright-mcp/
+.DS_Store
