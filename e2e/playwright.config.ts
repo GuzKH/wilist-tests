@@ -76,13 +76,6 @@ export default defineConfig({
     // },
   ],
 
-  /* Playwright сам поднимает бинарник wilist перед прогоном и гасит после */
-  webServer: {
-    command: './wilist',
-    cwd: '..',
-    env: { PORT: '8081' },
-    url: 'http://localhost:8081/health',
-    reuseExistingServer: !process.env.CI,
-    timeout: 10 * 1000,
-  },
+  /* wilist не поднимается автоматически: приложение живёт в отдельном репозитории
+     и должно быть запущено до прогона тестов на baseURL выше */
 });
