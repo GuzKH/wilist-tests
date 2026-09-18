@@ -1,0 +1,73 @@
+- main [ref=f1e5]:
+  - generic [ref=f1e6]:
+    - paragraph [ref=f1e7]: wilist
+    - heading "Things you want, in one place." [level=1] [ref=f1e8]
+    - paragraph [ref=f1e9]: Add links, track what you still want, and archive the rest.
+  - generic [ref=f1e10]:
+    - generic [ref=f1e11]:
+      - generic [ref=f1e12]: Name
+      - textbox "Name" [ref=f1e13]:
+        - /placeholder: Mechanical keyboard
+    - generic [ref=f1e14]:
+      - generic [ref=f1e15]: Link
+      - textbox "Link" [ref=f1e16]:
+        - /placeholder: https://…
+    - generic [ref=f1e17]:
+      - generic [ref=f1e18]: State
+      - combobox "State" [ref=f1e19]:
+        - option "wanted" [selected]
+        - option "purchased"
+        - option "archived"
+    - button "Add item" [ref=f1e20] [cursor=pointer]
+  - generic [ref=f1e21]:
+    - generic [ref=f1e22]:
+      - heading "Your list" [level=2] [ref=f1e23]
+      - generic [ref=f1e24]: 4 items
+    - list [ref=f1e25]:
+      - listitem [ref=f1e26]:
+        - generic [ref=f1e27]:
+          - paragraph [ref=f1e28]: ui-002-1789422783097
+          - link "example.com" [ref=f1e29] [cursor=pointer]:
+            - /url: https://example.com
+        - generic [ref=f1e30]:
+          - generic [ref=f1e31]: State
+          - combobox "State" [ref=f1e32]:
+            - option "wanted" [selected]
+            - option "purchased"
+            - option "archived"
+        - button "Delete ui-002-1789422783097" [ref=f1e33] [cursor=pointer]: Remove
+      - listitem [ref=f1e34]:
+        - generic [ref=f1e35]:
+          - paragraph [ref=f1e36]: ui-001-1789422783097
+          - generic [ref=f1e37]: No link
+        - generic [ref=f1e38]:
+          - generic [ref=f1e39]: State
+          - combobox "State" [ref=f1e40]:
+            - option "wanted" [selected]
+            - option "purchased"
+            - option "archived"
+        - button "Delete ui-001-1789422783097" [ref=f1e41] [cursor=pointer]: Remove
+      - listitem [ref=f1e42]:
+        - generic [ref=f1e43]:
+          - paragraph [ref=f1e44]: Grand Theft Auto 6 (GTA VI) (PS5)
+          - link "mediamarkt.nl" [ref=f1e45] [cursor=pointer]:
+            - /url: https://www.mediamarkt.nl/nl/product/_grand-theft-auto-6-gta-vi-ps5-1908242.html?utm_source=google&utm_medium=v2-sho&utm_campaign=nl|mm|rt|v2-sho|pfm|nsp|nl-it-gaming-playstation|na|d2c|na|na&utm_term=&utm_content=na-TCID21718438732-TAID201491239104&gad_source=1&gad_campaignid=21718438732&gbraid=0AAAAADoGBO5Ejg6sX1unCtgaLp6ggI-Gj&gclid=CjwKCAjwwfnUBhAtEiwAfQpAYhjMlwQab7ZuKBDul2CtQUt2c-RketIStKoMGdda4iWFAvuOaScbYRoCGZAQAvD_BwE
+        - generic [ref=f1e46]:
+          - generic [ref=f1e47]: State
+          - combobox "State" [ref=f1e48]:
+            - option "wanted" [selected]
+            - option "purchased"
+            - option "archived"
+        - button "Delete Grand Theft Auto 6 (GTA VI) (PS5)" [ref=f1e49] [cursor=pointer]: Remove
+      - listitem [ref=f1e50]:
+        - generic [ref=f1e51]:
+          - paragraph [ref=f1e52]: Power bank
+          - link "coolblue.nl" [ref=f1e53] [cursor=pointer]:
+            - /url: https://www.coolblue.nl/product/967057/anker-maggo-slim-draadloze-powerbank-met-magsafe-en-qi2-5-000-mah-met-snelladen-zwart.html?cmt=c_a,cid_24194034685,aid_196867367662,tid_pla-2411822331745,gn_g,d_c&utm_source=google&utm_medium=cpc&utm_content=shopping&gad_source=1&gad_campaignid=24194034685&gbraid=0AAAAAD7_VIY3EsTzLg97jnVKM0JpmYrBF&gclid=CjwKCAjwwfnUBhAtEiwAfQpAYhKq005oxcJynjuuSWJTIXAvbox9h0RcCve9AGvNU_Z0qQ6AY18OoRoCbMgQAvD_BwE
+        - generic [ref=f1e54]:
+          - generic [ref=f1e55]: State
+          - combobox "State" [ref=f1e56]:
+            - option "wanted" [selected]
+            - option "purchased"
+            - option "archived"
+        - button "Delete Power bank" [ref=f1e57] [cursor=pointer]: Remove

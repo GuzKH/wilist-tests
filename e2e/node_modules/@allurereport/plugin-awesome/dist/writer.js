@@ -1,0 +1,105 @@
+var __classPrivateFieldSet = (this && this.__classPrivateFieldSet) || function (receiver, state, value, kind, f) {
+    if (kind === "m") throw new TypeError("Private method is not writable");
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a setter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot write private member to an object whose class did not declare it");
+    return (kind === "a" ? f.call(receiver, value) : f ? f.value = value : state.set(receiver, value)), value;
+};
+var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (receiver, state, kind, f) {
+    if (kind === "a" && !f) throw new TypeError("Private accessor was defined without a getter");
+    if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
+    return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
+};
+var _FileSystemReportDataWriter_dataDir, _FileSystemReportDataWriter_widgetsDir, _FileSystemReportDataWriter_testResultsDir, _FileSystemReportDataWriter_attachmentsDir, _FileSystemReportDataWriter_dataDirReady, _FileSystemReportDataWriter_widgetsDirReady, _FileSystemReportDataWriter_testResultsDirReady, _FileSystemReportDataWriter_attachmentsDirReady, _InMemoryReportDataWriter_data;
+import { mkdir, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { joinPosixPath } from "@allurereport/core-api";
+export class FileSystemReportDataWriter {
+    constructor(output) {
+        this.output = output;
+        _FileSystemReportDataWriter_dataDir.set(this, void 0);
+        _FileSystemReportDataWriter_widgetsDir.set(this, void 0);
+        _FileSystemReportDataWriter_testResultsDir.set(this, void 0);
+        _FileSystemReportDataWriter_attachmentsDir.set(this, void 0);
+        _FileSystemReportDataWriter_dataDirReady.set(this, void 0);
+        _FileSystemReportDataWriter_widgetsDirReady.set(this, void 0);
+        _FileSystemReportDataWriter_testResultsDirReady.set(this, void 0);
+        _FileSystemReportDataWriter_attachmentsDirReady.set(this, void 0);
+        __classPrivateFieldSet(this, _FileSystemReportDataWriter_dataDir, resolve(this.output, "data"), "f");
+        __classPrivateFieldSet(this, _FileSystemReportDataWriter_widgetsDir, resolve(this.output, "widgets"), "f");
+        __classPrivateFieldSet(this, _FileSystemReportDataWriter_testResultsDir, resolve(this.output, "data", "test-results"), "f");
+        __classPrivateFieldSet(this, _FileSystemReportDataWriter_attachmentsDir, resolve(this.output, "data", "attachments"), "f");
+        __classPrivateFieldSet(this, _FileSystemReportDataWriter_dataDirReady, mkdir(__classPrivateFieldGet(this, _FileSystemReportDataWriter_dataDir, "f"), { recursive: true }), "f");
+        __classPrivateFieldSet(this, _FileSystemReportDataWriter_widgetsDirReady, mkdir(__classPrivateFieldGet(this, _FileSystemReportDataWriter_widgetsDir, "f"), { recursive: true }), "f");
+        __classPrivateFieldSet(this, _FileSystemReportDataWriter_testResultsDirReady, mkdir(__classPrivateFieldGet(this, _FileSystemReportDataWriter_testResultsDir, "f"), { recursive: true }), "f");
+        __classPrivateFieldSet(this, _FileSystemReportDataWriter_attachmentsDirReady, mkdir(__classPrivateFieldGet(this, _FileSystemReportDataWriter_attachmentsDir, "f"), { recursive: true }), "f");
+    }
+    async writeData(fileName, data) {
+        await __classPrivateFieldGet(this, _FileSystemReportDataWriter_dataDirReady, "f");
+        await writeFile(resolve(__classPrivateFieldGet(this, _FileSystemReportDataWriter_dataDir, "f"), fileName), JSON.stringify(data), { encoding: "utf-8" });
+    }
+    async writeWidget(fileName, data) {
+        await __classPrivateFieldGet(this, _FileSystemReportDataWriter_widgetsDirReady, "f");
+        await writeFile(resolve(__classPrivateFieldGet(this, _FileSystemReportDataWriter_widgetsDir, "f"), fileName), JSON.stringify(data), { encoding: "utf-8" });
+    }
+    async writeTestCase(test) {
+        await __classPrivateFieldGet(this, _FileSystemReportDataWriter_testResultsDirReady, "f");
+        await writeFile(resolve(__classPrivateFieldGet(this, _FileSystemReportDataWriter_testResultsDir, "f"), `${test.id}.json`), JSON.stringify(test), { encoding: "utf-8" });
+    }
+    async writeAttachment(source, file) {
+        await __classPrivateFieldGet(this, _FileSystemReportDataWriter_attachmentsDirReady, "f");
+        await file.writeTo(resolve(__classPrivateFieldGet(this, _FileSystemReportDataWriter_attachmentsDir, "f"), source));
+    }
+}
+_FileSystemReportDataWriter_dataDir = new WeakMap(), _FileSystemReportDataWriter_widgetsDir = new WeakMap(), _FileSystemReportDataWriter_testResultsDir = new WeakMap(), _FileSystemReportDataWriter_attachmentsDir = new WeakMap(), _FileSystemReportDataWriter_dataDirReady = new WeakMap(), _FileSystemReportDataWriter_widgetsDirReady = new WeakMap(), _FileSystemReportDataWriter_testResultsDirReady = new WeakMap(), _FileSystemReportDataWriter_attachmentsDirReady = new WeakMap();
+export class InMemoryReportDataWriter {
+    constructor() {
+        _InMemoryReportDataWriter_data.set(this, {});
+    }
+    async writeData(fileName, data) {
+        const dist = joinPosixPath("data", fileName);
+        __classPrivateFieldGet(this, _InMemoryReportDataWriter_data, "f")[dist] = Buffer.from(JSON.stringify(data), "utf-8");
+    }
+    async writeWidget(fileName, data) {
+        const dist = joinPosixPath("widgets", fileName);
+        __classPrivateFieldGet(this, _InMemoryReportDataWriter_data, "f")[dist] = Buffer.from(JSON.stringify(data), "utf-8");
+    }
+    async writeTestCase(test) {
+        const dist = joinPosixPath("data", "test-results", `${test.id}.json`);
+        __classPrivateFieldGet(this, _InMemoryReportDataWriter_data, "f")[dist] = Buffer.from(JSON.stringify(test), "utf-8");
+    }
+    async writeAttachment(fileName, file) {
+        const dist = joinPosixPath("data", "attachments", fileName);
+        const content = await file.asBuffer();
+        if (content) {
+            __classPrivateFieldGet(this, _InMemoryReportDataWriter_data, "f")[dist] = content;
+        }
+    }
+    reportFiles() {
+        return Object.keys(__classPrivateFieldGet(this, _InMemoryReportDataWriter_data, "f")).map((key) => ({
+            name: key,
+            value: __classPrivateFieldGet(this, _InMemoryReportDataWriter_data, "f")[key].toString("base64"),
+        }));
+    }
+}
+_InMemoryReportDataWriter_data = new WeakMap();
+export class ReportFileDataWriter {
+    constructor(reportFiles) {
+        this.reportFiles = reportFiles;
+    }
+    async writeData(fileName, data) {
+        await this.reportFiles.addFile(joinPosixPath("data", fileName), Buffer.from(JSON.stringify(data), "utf-8"));
+    }
+    async writeWidget(fileName, data) {
+        await this.reportFiles.addFile(joinPosixPath("widgets", fileName), Buffer.from(JSON.stringify(data), "utf-8"));
+    }
+    async writeAttachment(source, file) {
+        const contentBuffer = await file.asBuffer();
+        if (!contentBuffer) {
+            return;
+        }
+        await this.reportFiles.addFile(joinPosixPath("data", "attachments", source), contentBuffer);
+    }
+    async writeTestCase(test) {
+        await this.reportFiles.addFile(joinPosixPath("data", "test-results", `${test.id}.json`), Buffer.from(JSON.stringify(test), "utf8"));
+    }
+}

@@ -1,0 +1,143 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: ui-007.spec.ts >> wilist UI >> UI-007 — Two items with the same Name
+- Location: tests/ui-007.spec.ts:4:7
+
+# Error details
+
+```
+Error: expect(locator).toHaveCount(expected) failed
+
+Locator:  locator('li')
+Expected: 5
+Received: 4
+Timeout:  5000ms
+
+Call log:
+  - Expect "toHaveCount" locator('li') with timeout 5000ms
+  - waiting for locator('li')
+    14 × locator resolved to 4 elements
+       - unexpected value "4"
+
+```
+
+# Page snapshot
+
+```yaml
+- main [ref=e5]:
+  - generic [ref=e6]:
+    - paragraph [ref=e7]: wilist
+    - heading "Things you want, in one place." [level=1] [ref=e8]
+    - paragraph [ref=e9]: Add links, track what you still want, and archive the rest.
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - generic [ref=e12]: Name
+      - textbox "Name" [active] [ref=e13]:
+        - /placeholder: Mechanical keyboard
+    - generic [ref=e14]:
+      - generic [ref=e15]: Link
+      - textbox "Link" [ref=e16]:
+        - /placeholder: https://…
+    - generic [ref=e17]:
+      - generic [ref=e18]: State
+      - combobox "State" [ref=e19]:
+        - option "wanted" [selected]
+        - option "purchased"
+        - option "archived"
+    - button "Add item" [ref=e20] [cursor=pointer]
+  - generic [ref=e21]:
+    - generic [ref=e22]:
+      - heading "Your list" [level=2] [ref=e23]
+      - generic [ref=e24]: 4 items
+    - list [ref=e25]:
+      - listitem [ref=e26]:
+        - generic [ref=e27]:
+          - paragraph [ref=e28]: ui-007-1789596898045
+          - generic [ref=e29]: No link
+        - generic [ref=e30]:
+          - generic [ref=e31]: State
+          - combobox "State" [ref=e32]:
+            - option "wanted" [selected]
+            - option "purchased"
+            - option "archived"
+        - button "Delete ui-007-1789596898045" [ref=e33] [cursor=pointer]: Remove
+      - listitem [ref=e34]:
+        - generic [ref=e35]:
+          - paragraph [ref=e36]: ui-002-1789596896449
+          - link "example.com" [ref=e37] [cursor=pointer]:
+            - /url: https://example.com
+        - generic [ref=e38]:
+          - generic [ref=e39]: State
+          - combobox "State" [ref=e40]:
+            - option "wanted" [selected]
+            - option "purchased"
+            - option "archived"
+        - button "Delete ui-002-1789596896449" [ref=e41] [cursor=pointer]: Remove
+      - listitem [ref=e42]:
+        - generic [ref=e43]:
+          - paragraph [ref=e44]: ui-001-1789596896450
+          - generic [ref=e45]: No link
+        - generic [ref=e46]:
+          - generic [ref=e47]: State
+          - combobox "State" [ref=e48]:
+            - option "wanted" [selected]
+            - option "purchased"
+            - option "archived"
+        - button "Delete ui-001-1789596896450" [ref=e49] [cursor=pointer]: Remove
+      - listitem [ref=e50]:
+        - generic [ref=e51]:
+          - paragraph [ref=e52]: "!@#$%^&45678ERTYUIO. &*()FGHJKL VBNM<45678"
+          - link "example.com" [ref=e53] [cursor=pointer]:
+            - /url: https://example.com/very/long/path?query=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890&x=1&y=2&z=3#fragment
+        - generic [ref=e54]:
+          - generic [ref=e55]: State
+          - combobox "State" [ref=e56]:
+            - option "wanted" [selected]
+            - option "purchased"
+            - option "archived"
+        - button "Delete !@#$%^&45678ERTYUIO. &*()FGHJKL VBNM<45678" [ref=e57] [cursor=pointer]: Remove
+```
+
+# Test source
+
+```ts
+  1  | import { test, expect } from '@playwright/test';
+  2  | 
+  3  | test.describe('wilist UI', () => {
+  4  |   test('UI-007 — Two items with the same Name', async ({ page }) => {
+  5  |     await page.goto('/');
+  6  | 
+  7  |     const form = page.locator('form');
+  8  |     const nameInput = form.getByRole('textbox', { name: 'Name' });
+  9  |     const addButton = form.getByRole('button', { name: 'Add item' });
+  10 |     const listItems = page.locator('li');
+  11 | 
+  12 |     // Keep the test independent from pre-seeded items and previous tests.
+  13 |     const beforeCount = await listItems.count();
+  14 | 
+  15 |     const name = `ui-007-${Date.now()}`;
+  16 | 
+  17 |     // Create the first item with the chosen name.
+  18 |     await nameInput.fill(name);
+  19 |     await addButton.click();
+  20 | 
+  21 |     // Create a second item with exactly the same name.
+  22 |     await nameInput.fill(name);
+  23 |     await addButton.click();
+  24 | 
+  25 |     // Duplicate names are allowed, so exactly two new items must be added.
+> 26 |     await expect(listItems).toHaveCount(beforeCount + 2);
+     |                             ^ Error: expect(locator).toHaveCount(expected) failed
+  27 | 
+  28 |     // Newly created items appear at the top, so both duplicates should be consecutive.
+  29 |     await expect(listItems.nth(0)).toContainText(name);
+  30 |     await expect(listItems.nth(1)).toContainText(name);
+  31 |   });
+  32 | });
+```

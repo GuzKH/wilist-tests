@@ -1,0 +1,29 @@
+{
+  "name": "wilist",
+  "version": "1.0.0",
+  "description": "Simple Go wishlist API with a React UI.",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+"allure:report": "allure generate ./allure-results && allure open ./allure-report",
+"test:allure": "rm -rf allure-results && playwright test; allure generate ./allure-results && allure open ./allure-report"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ppeerr/wilist.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ppeerr/wilist/issues"
+  },
+  "homepage": "https://github.com/ppeerr/wilist#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.2",
+    "allure": "^3.17.0",
+    "allure-playwright": "^3.12.1"
+  }
+}

@@ -1,0 +1,1756 @@
+{
+  "info": {
+    "_postman_id": "ff76bc91-ae94-4230-8f84-6f049676f28c",
+    "name": "ppeerr/wilist",
+    "description": "API-тесты wilist. Кейсы: Obsidian → Pet project - ppeerr wilist/api cases table.md\n\nСТРУКТУРА\n- smoke - быстрый прогон, жива ли сборка\n- regression - всё остальное\n- regression / id validation (data-driven) - СЛОМАН: реквест внутри этой подпапки на 3-м уровне вложенности теряет тело и тесты из-за ограничения API. Требует починки отдельным шагом (вынести реквест на 2-й уровень).\n\nПеременные: {{baseUrl}} = http://localhost:8080 (окружение, с протоколом, без слеша на конце)\nПредусловие: существуют элементы id=1 (PUT) и id=2 (DELETE).\n\nЗафиксированное поведение: PUT = полная замена (name и state обязательны); webLink не валидируется; неизвестные поля и невалидные даты игнорируются; Content-Type не проверяется.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "6399232"
+  },
+  "item": [
+    {
+      "name": "smoke",
+      "item": [
+        {
+          "name": "[WISH-HLT-001] GET health - service is up",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-HLT-001 — Health check\n// Expected (api cases table): 200; body is not empty\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// Service is up and answers successfully\npm.test('Status 200', () => {\n  pm.response.to.have.status(200);\n});\n\n// Health endpoint returns some content, not an empty response\npm.test('Body is not empty', () => {\n  pm.expect(pm.response.text()).to.not.be.empty;\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-GET-001] GET wish-items - all existing items",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-GET-001 — Get all wish-items\n// Expected (api cases table): 200; JSON; array is not null;\n// every item has all 6 fields, state is from enum\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// Request succeeded\npm.test('Status 200', () => {\n  pm.response.to.have.status(200);\n});\n\n// Response is a JSON array.\n// An empty array [] is valid and passes; null or an object fails.\npm.test('Body is a JSON array', () => {\n  pm.expect(pm.response.json()).to.be.an('array');\n});\n\n// Every item matches the object contract.\n// checkItem() is declared in Collection Pre-request:\n// checks fields id, name, webLink, createdDate, updatedDate, state\n// and that state is one of wanted / purchased / archived.\n// Note: on an empty array there is nothing to check, the test passes.\npm.test('Each item matches contract', () => {\n  pm.response.json().forEach(item => checkItem(item));\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-GET-002] GET wish-items - existing item by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-GET-002 — Get by id, existing item\n// Expected (api cases table): 200; returned id matches; all 6 fields; dates are valid\n// Item is created by the smoke folder Pre-request, its id is in {{fixtureId}}\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst item = pm.response.json();\nconst fixtureId = pm.collectionVariables.get('fixtureId');\n\n// Existing item is found\npm.test('Status 200', () => {\n  pm.response.to.have.status(200);\n});\n\n// Server returned exactly the item we asked for\npm.test('Returned id matches requested id', () => {\n  pm.expect(String(item.id)).to.eql(String(fixtureId));\n});\n\n// All 6 fields are present, state is from enum (checkItem from Collection Pre-request)\npm.test('Item matches contract', () => {\n  checkItem(item);\n});\n\n// createdDate and updatedDate are parseable dates, not empty strings or garbage\npm.test('Dates are valid', () => {\n  ['createdDate', 'updatedDate'].forEach(field => {\n    pm.expect(Date.parse(item[field]), `${field} = \"${item[field]}\"`).to.not.be.NaN;\n  });\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{fixtureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{fixtureId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-GET-009] GET wish-items/ - trailing slash",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-GET-009 — Get all with trailing slash (/wish-items/)\n// Expected (api cases table): record the fact — 200 / 301 / 404, write it to console\n// This is an observation case: any of the three codes is acceptable\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst code = pm.response.code;\n\n// Record actual behaviour so it can be copied into the cases table\nconsole.log(`WISH-GET-009: /wish-items/ returned ${code}`);\n\n// Server handles the trailing slash in one of the expected ways\npm.test(`Status is 200, 301 or 404 (actual: ${code})`, () => {\n  pm.expect([200, 301, 404]).to.include(code);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                ""
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-001] POST wish-items - create item with state wanted",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-001 — Create item with state \"wanted\"\n// Expected (api cases table): 201; body contains id; all 6 fields; state is saved as sent\n// Created item is registered for cleanup by the smoke folder Post-response script\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst item = pm.response.json();\nconst sent = JSON.parse(pm.request.body.raw);\n\n// Item was created\npm.test('Status 201', () => {\n  pm.response.to.have.status(201);\n});\n\n// Server assigned an id to the new item\npm.test('Response contains id', () => {\n  pm.expect(item.id, 'id').to.be.ok;\n});\n\n// All 6 fields are present, state is from enum (checkItem from Collection Pre-request)\npm.test('Item matches contract', () => {\n  checkItem(item);\n});\n\n// Values from the request body are stored as sent\npm.test('Sent values are saved', () => {\n  pm.expect(item.name, 'name').to.eql(sent.name);\n  pm.expect(item.state, 'state').to.eql(sent.state);\n  pm.expect(item.webLink, 'webLink').to.eql(sent.webLink);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Power bank\",\n  \"webLink\": \"https://www.coolblue.nl/product/967057/\",\n  \"state\": \"wanted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-002] POST wish-items - create item, webLink is not validated as URL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-002 — Create item with state \"purchased\" and a non-URL webLink\n// Expected (api cases table): 201; state = purchased;\n// webLink is stored as sent — the API does not validate it as a URL\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst item = pm.response.json();\nconst sent = JSON.parse(pm.request.body.raw);\n\npm.test('Status 201', () => {\n  pm.response.to.have.status(201);\n});\n\npm.test('Item matches contract', () => {\n  checkItem(item);\n});\n\n// The \"purchased\" state is accepted and stored\npm.test('State is purchased', () => {\n  pm.expect(item.state).to.eql('purchased');\n});\n\n// Documented behaviour: webLink is not validated, any string is kept as is\npm.test('Non-URL webLink is stored as sent', () => {\n  pm.expect(item.webLink).to.eql(sent.webLink);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"purchased item state\",\n  \"webLink\": \"не ссылка\",\n  \"state\": \"purchased\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-003] POST wish-items - create item with state archived",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-003 — Create item with state \"archived\" and an empty webLink\n// Expected (api cases table): 201; state = archived; empty webLink is accepted\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst item = pm.response.json();\n\npm.test('Status 201', () => {\n  pm.response.to.have.status(201);\n});\n\npm.test('Item matches contract', () => {\n  checkItem(item);\n});\n\n// The \"archived\" state is accepted and stored\npm.test('State is archived', () => {\n  pm.expect(item.state).to.eql('archived');\n});\n\n// Empty string is a valid webLink value, the field stays empty\npm.test('Empty webLink stays empty', () => {\n  pm.expect(item.webLink).to.eql('');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"archived item state\",\n  \"webLink\": \"\",\n  \"state\": \"archived\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-004] POST wish-items - reject empty name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-004 — update with empty name\n// Expected (api cases table): 400, item is rejected\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// Missing required field \"name\" is rejected\npm.test('Status 400: name is required', () => {\n  pm.response.to.have.status(400);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"state\": \"wanted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-005] POST wish-items - reject state outside enum",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-005 — Create item with an invalid state value (\"test\")\n// Expected (api cases table): 400, item is rejected\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// State outside the enum (wanted / purchased / archived) is rejected\npm.test('Status 400: state must be one of: wanted, purchased, archived', () => {\n  pm.response.to.have.status(400);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"wrong item state\",\n  \"webLink\": \"\",\n  \"state\": \"test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-006] POST wish-items - reject empty request body",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-006 — Create item with an empty request body\n// Expected (api cases table): 400, request is rejected\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// No body at all is rejected, not treated as \"create with defaults\"\npm.test('Status 400: invalid JSON body', () => {\n  pm.response.to.have.status(400);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-008] POST wish-items - reject missing name field",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-008 — Create item without the \"name\" field\n// Expected (api cases table): 400, name is required\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// Missing required field \"name\" is rejected\npm.test('Status 400: name is required', () => {\n  pm.response.to.have.status(400);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"state\": \"wanted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-PUT-001] PUT wish-items - id in request body does not override real id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-PUT-001 — Full update; id in body is ignored\n// Expected (api cases table): 200; fields updated; updatedDate >= createdDate;\n// id stays the original one (fixtureId); item 99 does not appear\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst item = pm.response.json();\nconst sent = JSON.parse(pm.request.body.raw);\nconst fixtureId = pm.collectionVariables.get('fixtureId');\n\npm.test('Status 200', () => {\n  pm.response.to.have.status(200);\n});\n\npm.test('Item matches contract', () => {\n  checkItem(item);\n});\n\n// This is the point of the case: id from the body (\"99\") must be ignored\npm.test('Id from body is ignored, real id is unchanged', () => {\n  pm.expect(String(item.id), 'id').to.eql(String(fixtureId));\n  pm.expect(String(item.id), 'id').to.not.eql('99');\n});\n\n// Writable fields are updated as sent\npm.test('Sent values are saved', () => {\n  pm.expect(item.name, 'name').to.eql(sent.name);\n  pm.expect(item.state, 'state').to.eql(sent.state);\n  pm.expect(item.webLink, 'webLink').to.eql(sent.webLink);\n});\n\n// updatedDate must not be earlier than createdDate\npm.test('updatedDate is not earlier than createdDate', () => {\n  pm.expect(Date.parse(item.updatedDate)).to.be.at.least(Date.parse(item.createdDate));\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"99\",\n  \"name\": \"Power bank updated\",\n  \"webLink\": \"https://example.com/updated\",\n  \"state\": \"purchased\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{fixtureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{fixtureId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-PUT-002] PUT wish-items - reject request missing state field",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-PUT-002 — Required field missing (only \"name\" is sent, \"state\" is missing)\n// Expected (api cases table): 400/422, item is not changed\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\npm.test('Status 400: state is required', () => {\n  pm.response.to.have.status(400);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"only name changed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{fixtureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{fixtureId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-PUT-008] PUT wish-items - reject state outside enum",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-PUT-008 — Update with invalid state\n// Expected (api cases table): 400, item is rejected\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// State outside the enum (wanted / purchased / archived) is rejected\npm.test('Status 400: state must be one of: wanted, purchased, archived', () => {\n  pm.response.to.have.status(400);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Power bank\",\n  \"state\": \"test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{fixtureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{fixtureId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-DEL-001] DELETE wish-items - delete existing item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-DEL-001 — Delete an existing item\n// Expected (api cases table): 204; body is empty\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\npm.test('Status 204', () => {\n  pm.response.to.have.status(204);\n});\n\npm.test('Body is empty', () => {\n  pm.expect(pm.response.text()).to.be.empty;\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{fixtureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{fixtureId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-DEL-005] DELETE wish-items - reject request without id in url",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-DEL-005 — DELETE without id in the URL\n// Expected (api cases table): 405; list is not affected\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// Method not supported on the collection endpoint\npm.test('Status 405: method not allowed', () => {\n  pm.response.to.have.status(405);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "const baseUrl = pm.environment.get('baseUrl');",
+              "const runId = pm.collectionVariables.get('runId');",
+              "",
+              "pm.sendRequest({",
+              "  url: `${baseUrl}/wish-items`,",
+              "  method: 'POST',",
+              "  header: { 'Content-Type': 'application/json' },",
+              "  body: { mode: 'raw', raw: JSON.stringify({",
+              "    name: `fx-${runId}-${pm.info.requestName}`,",
+              "    webLink: 'https://example.com/fixture',",
+              "    state: 'wanted'",
+              "  })}",
+              "}, (err, res) => {",
+              "  if (err) { throw new Error(`Фикстура не создана: ${err}`); }",
+              "  if (res.code >= 300) { throw new Error(`Фикстура не создана, код ${res.code}`); }",
+              "",
+              "  const item = res.json();",
+              "  pm.collectionVariables.set('fixtureId', item.id);",
+              "",
+              "  const ids = JSON.parse(pm.collectionVariables.get('createdIds') || '[]');",
+              "  ids.push(item.id);",
+              "  pm.collectionVariables.set('createdIds', JSON.stringify(ids));",
+              "});"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "pm.test('No server error (5xx)', () => {",
+              "  pm.expect(pm.response.code, 'status code').to.be.below(500);",
+              "})",
+              "if (pm.request.method === 'POST' && pm.response.code < 300 && pm.response.text()) {",
+              "  const ids = JSON.parse(pm.collectionVariables.get('createdIds') || '[]');",
+              "  ids.push(pm.response.json().id);",
+              "  pm.collectionVariables.set('createdIds', JSON.stringify(ids));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "regression",
+      "item": [
+        {
+          "name": "[WISH-HLT-002] HEAD health - service is up, no body",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-HLT-002 — HEAD Health\n// Expected (api cases table): 200; body is not empty\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// Service is up and answers successfully\npm.test('Status 200', () => {\n  pm.response.to.have.status(200);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "HEAD",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-HLT-003] POST health - method not allowed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-HLT-003 — method not allowed\n// Expected (api cases table): 405, item is rejected\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// This endpoint is unavalible \npm.test('Status 405: method not allowed', () => {\n  pm.response.to.have.status(405);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-007] POST wish-items - reject state with wrong case (\"Wanted\")",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-007 — state case sensitivity\n// Expected (api cases table): 400, item is rejected\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// State outside the enum (wanted / purchased / archived) is rejected\npm.test('Status 400: state must be one of: wanted, purchased, archived', () => {\n  pm.response.to.have.status(400);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"case sensitivity check\",\n  \"state\": \"Wanted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-009] POST wish-items - name and webLink at 256 chars boundary",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-009 — name and webLink length 256\n// Generate random test data before sending the API request.\n\n\n// Character set used for random test data.\n// Includes:\n// - uppercase letters\n// - lowercase letters\n// - digits\n// - special characters\nconst chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';\n\n\n// Generate a random string with exactly 256 characters.\nfunction generateRandomString(length) {\n\n    // Start with an empty string.\n    let result = '';\n\n    // Add one random character on every iteration.\n    for (let i = 0; i < length; i++) {\n\n        // Generate a random position inside the character set.\n        const randomIndex = Math.floor(Math.random() * chars.length);\n\n        // Add the selected character to the result.\n        result += chars.charAt(randomIndex);\n    }\n\n    // Return the generated string.\n    return result;\n}\n\n\n// Generate a random name containing exactly 256 characters.\nconst randomName = generateRandomString(256);\n\n\n// Generate a random webLink containing exactly 256 characters.\nconst randomWebLink = generateRandomString(256);\n\n\n// Save generated values as Postman variables.\n// These variables are used in the request body.\npm.variables.set('longName', randomName);\npm.variables.set('longWebLink', randomWebLink);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-009 — name and webLink length 256\n//\n// Expected:\n// - Status is 201\n// - Response contains id\n// - Response matches the common item contract\n// - name contains exactly 256 characters\n// - webLink contains exactly 256 characters\n// - Sent values are saved unchanged\n//\n// Created item is registered for cleanup by the smoke folder script.\n// Common \"No server error (5xx)\" check runs from the smoke folder script.\n\n\n// Parse the API response body.\nconst item = pm.response.json();\n\n\n// Parse the request body.\n//\n// replaceIn() replaces {{longName}} and {{longWebLink}}\n// with their actual generated values before parsing the JSON.\nconst sent = JSON.parse(\n    pm.variables.replaceIn(pm.request.body.raw)\n);\n\n\n// ------------------------------------------------------------\n// 1. Verify that the item was created successfully.\n// ------------------------------------------------------------\n\npm.test('Status is 201', () => {\n\n    // POST should return HTTP 201 Created.\n    pm.response.to.have.status(201);\n});\n\n\n// ------------------------------------------------------------\n// 2. Verify that the server assigned an ID.\n// ------------------------------------------------------------\n\npm.test('Response contains id', () => {\n\n    // A newly created item must have an ID.\n    pm.expect(item.id, 'id').to.exist;\n});\n\n\n// ------------------------------------------------------------\n// 3. Verify the common response contract.\n// ------------------------------------------------------------\n\npm.test('Item matches contract', () => {\n\n    // checkItem() is the common contract validation\n    // defined in the Collection Pre-request Script.\n    //\n    // It verifies required fields and the allowed state enum.\n    checkItem(item);\n});\n\n\n// ------------------------------------------------------------\n// 4. Verify name length.\n// ------------------------------------------------------------\n\npm.test('Name has exactly 256 characters', () => {\n\n    // Verify that the generated request value has exactly\n    // 256 characters.\n    pm.expect(sent.name, 'request name length')\n        .to.have.lengthOf(256);\n\n    // Verify that the API response contains exactly\n    // 256 characters as well.\n    //\n    // This catches server-side truncation.\n    pm.expect(item.name, 'response name length')\n        .to.have.lengthOf(256);\n});\n\n\n// ------------------------------------------------------------\n// 5. Verify webLink length.\n// ------------------------------------------------------------\n\npm.test('webLink has exactly 256 characters', () => {\n\n    // Verify that the generated request value has exactly\n    // 256 characters.\n    pm.expect(sent.webLink, 'request webLink length')\n        .to.have.lengthOf(256);\n\n    // Verify that the API response contains exactly\n    // 256 characters as well.\n    pm.expect(item.webLink, 'response webLink length')\n        .to.have.lengthOf(256);\n});\n\n\n// ------------------------------------------------------------\n// 6. Verify that all sent values were saved unchanged.\n// ------------------------------------------------------------\n\npm.test('Sent values are saved unchanged', () => {\n\n    // Name returned by the API must exactly match\n    // the randomly generated name from the request.\n    pm.expect(item.name, 'name')\n        .to.eql(sent.name);\n\n    // State returned by the API must match the requested state.\n    pm.expect(item.state, 'state')\n        .to.eql(sent.state);\n\n    // webLink returned by the API must exactly match\n    // the randomly generated webLink from the request.\n    pm.expect(item.webLink, 'webLink')\n        .to.eql(sent.webLink);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{longName}}\",\n  \"state\": \"wanted\",\n  \"webLink\": \"{{longWebLink}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-010] POST wish-items - unicode name, ignore read-only and unknown fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-010 — Unicode + read-only fields + unknown field\n//\n// Expected:\n// - Status is 201\n// - Response contains a server-generated id\n// - Unicode characters and emoji in name are preserved\n// - Read-only id from request is ignored\n// - Read-only createdDate from request is ignored\n// - Read-only updatedDate from request is ignored\n// - Unknown field \"foo\" is ignored\n// - Writable fields are saved as sent\n//\n// Created item is registered for cleanup by the smoke folder script.\n// Common \"No server error (5xx)\" check runs from the smoke folder script.\n\n\n// Parse the response body.\nconst item = pm.response.json();\n\n\n// Parse the request body.\n// replaceIn() resolves Postman variables before parsing the JSON.\nconst sent = JSON.parse(\n    pm.variables.replaceIn(pm.request.body.raw)\n);\n\n\n// ------------------------------------------------------------\n// 1. Verify successful creation.\n// ------------------------------------------------------------\n\npm.test('Status is 201', () => {\n\n    // POST should return 201 Created.\n    pm.response.to.have.status(201);\n});\n\n\n// ------------------------------------------------------------\n// 2. Verify that the server generated an id.\n// ------------------------------------------------------------\n\npm.test('Response contains server-generated id', () => {\n\n    // The created item must have an id.\n    pm.expect(item.id, 'id').to.exist;\n\n    // The server must not use the id supplied in the request.\n    pm.expect(item.id, 'id must not be taken from request')\n        .to.not.eql(sent.id);\n});\n\n\n// ------------------------------------------------------------\n// 3. Verify Unicode support in name.\n// ------------------------------------------------------------\n\npm.test('Unicode name is saved correctly', () => {\n\n    // The exact Unicode string sent in the request\n    // must be returned unchanged.\n    pm.expect(item.name, 'name')\n        .to.eql('Наушники Sony 🎧');\n\n    // Also verify that the value returned by the API\n    // is exactly the value that was sent.\n    pm.expect(item.name, 'name')\n        .to.eql(sent.name);\n});\n\n\n// ------------------------------------------------------------\n// 4. Verify writable fields are saved unchanged.\n// ------------------------------------------------------------\n\npm.test('Writable fields are saved unchanged', () => {\n\n    // name must be saved exactly as sent.\n    pm.expect(item.name, 'name')\n        .to.eql(sent.name);\n\n    // webLink must be saved exactly as sent.\n    pm.expect(item.webLink, 'webLink')\n        .to.eql(sent.webLink);\n\n    // state must be saved exactly as sent.\n    pm.expect(item.state, 'state')\n        .to.eql(sent.state);\n});\n\n\n// ------------------------------------------------------------\n// 5. Verify read-only id is ignored.\n// ------------------------------------------------------------\n\npm.test('id from request is ignored', () => {\n\n    // The request contains id = \"999\".\n    // The API must generate its own id instead.\n    pm.expect(item.id, 'generated id')\n        .to.not.eql('999');\n});\n\n\n// ------------------------------------------------------------\n// 6. Verify createdDate from request is ignored.\n// ------------------------------------------------------------\n\npm.test('СreatedDate from request is ignored', () => {\n\n    // The invalid value \"не дата\" must not be stored.\n    pm.expect(item.createdDate, 'createdDate')\n        .to.not.eql(sent.createdDate);\n\n    // The API must return a valid date instead.\n    pm.expect(item.createdDate, 'createdDate')\n        .to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$/);\n\n    // Verify that the returned value can actually be parsed as a date.\n    pm.expect(\n        Date.parse(item.createdDate),\n        'createdDate must be a valid date'\n    ).to.not.be.NaN;\n});\n\n\n// ------------------------------------------------------------\n// 7. Verify updatedDate from request is ignored.\n// ------------------------------------------------------------\n\npm.test('UpdatedDate from request is ignored', () => {\n\n    // The API must not save the value supplied by the client.\n    pm.expect(item.updatedDate, 'updatedDate')\n        .to.not.eql(sent.updatedDate);\n\n    // The API must return a valid date.\n    pm.expect(item.updatedDate, 'updatedDate')\n        .to.match(/^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$/);\n\n    // Verify that the returned value is a valid date.\n    pm.expect(\n        Date.parse(item.updatedDate),\n        'updatedDate must be a valid date'\n    ).to.not.be.NaN;\n});\n\n\n// ------------------------------------------------------------\n// 8. Verify unknown field is ignored.\n// ------------------------------------------------------------\n\npm.test('Unknown field \"foo\" is ignored', () => {\n\n    // \"foo\" is not part of the wish-item contract.\n    // It must not be persisted in the response.\n    pm.expect(item, 'response')\n        .to.not.have.property('foo');\n});\n\n\n// ------------------------------------------------------------\n// 9. Verify the complete response contract.\n// ------------------------------------------------------------\n\npm.test('Item matches contract', () => {\n\n    // checkItem() performs the common contract validation:\n    // required fields, field types and state enum.\n    checkItem(item);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"999\",\n  \"name\": \"Наушники Sony 🎧\",\n  \"webLink\": \"https://example.com\",\n  \"state\": \"wanted\",\n  \"createdDate\": \"не дата\",\n  \"updatedDate\": \"2000-01-01T00:00:00Z\",\n  \"foo\": \"bar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-010b] POST wish-items - whitespace-only name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-010b — Create item with a whitespace-only name (\"   \")\n// Expected (api cases table): record the fact — 201 (no trim) or 400/422 (rejected)\n// This is an observation case: any of the two outcomes is acceptable\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// Missing required field \"name\" is rejected\npm.test('Status 400: name is required', () => {\n  pm.response.to.have.status(400);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"   \",\n  \"state\": \"wanted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-011] POST wish-items - XSS payload stored as-is, not escaped",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-011 — Create item with an XSS payload in name\n// Expected (api cases table): 201; stored as-is, not escaped or stripped.\n// Whether this renders safely in the UI is checked separately, in Playwright.\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst item = pm.response.json();\nconst sent = JSON.parse(pm.request.body.raw);\n\npm.test('Status 201', () => {\n  pm.response.to.have.status(201);\n});\n\npm.test('Item matches contract', () => {\n  checkItem(item);\n});\n\n// The API layer does not sanitize or escape the value — it's stored exactly as sent\npm.test('Payload is stored unchanged', () => {\n  pm.expect(item.name).to.eql(sent.name);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"<script>alert(1)</script>\",\n  \"state\": \"wanted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-015] POST wish-items - reject malformed JSON body",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-015 — malformed JSON\n// Expected (api cases table): 400, request is rejected\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// No body at all is rejected, not treated as \"create with defaults\"\npm.test('Status 400: invalid JSON body', () => {\n  pm.response.to.have.status(400);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"broken\"",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-016] POST wish-items - reject array instead of object body",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-016 — Array instead of object in the request body\n// Expected (api cases table): 400/422, invalid request structure\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\npm.test('Status 400: body must be a JSON object, not an array', () => {\n  pm.response.to.have.status(400);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"name\": \"array body\",\n    \"state\": \"wanted\"\n  }\n]",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-017] POST wish-items - Content-Type header is not validated",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-017 — Create item with Content-Type: text/plain (body is valid JSON)\n// Expected (api cases table): 201 — Content-Type header is not validated (documented behaviour).\n// By spec, 415 would be expected instead — this is flagged as a defect candidate, not asserted here.\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst item = pm.response.json();\n\npm.test('Status 201', () => {\n  pm.response.to.have.status(201);\n});\n\npm.test('Item matches contract', () => {\n  checkItem(item);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/plain"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"content type check\", \"state\": \"wanted\"}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-018] POST wish-items/id - method not allowed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-018 — method not allowed (id in url)\n// Expected (api cases table): 405, item is rejected\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// This endpoint is unavalible \npm.test('Status 405: method not allowed', () => {\n  pm.response.to.have.status(405);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"post to item url\",\n  \"state\": \"wanted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{fixtureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{fixtureId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-POST-019] POST wish-items - duplicate bodies get different ids",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-POST-019 — Create two items with identical bodies\n// Expected (api cases table): 201 both times; ids are different (duplicates are allowed)\n// This request sends the first POST as usual; the test script sends a second,\n// identical POST and compares both responses.\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst baseUrl = pm.environment.get('baseUrl');\nconst firstItem = pm.response.json();\n\npm.test('First request: status 201', () => {\n  pm.response.to.have.status(201);\n});\n\npm.test('First item matches contract', () => {\n  checkItem(firstItem);\n});\n\n// Send the second, identical request from the test script\npm.sendRequest({\n  url: `${baseUrl}/wish-items`,\n  method: 'POST',\n  header: { 'Content-Type': 'application/json' },\n  body: pm.request.body\n}, (err, res) => {\n  if (err) { throw new Error(`Second request failed: ${err}`); }\n\n  pm.test('Second request: status 201', () => {\n    pm.expect(res.code).to.eql(201);\n  });\n\n  const secondItem = res.json();\n\n  pm.test('Second item matches contract', () => {\n    checkItem(secondItem);\n  });\n\n  pm.test('Ids are different', () => {\n    pm.expect(String(secondItem.id)).to.not.eql(String(firstItem.id));\n  });\n\n  // Register the second item for Teardown cleanup — the folder script\n  // only sees the first response, not this manual one\n  const ids = JSON.parse(pm.collectionVariables.get('createdIds') || '[]');\n  ids.push(secondItem.id);\n  pm.collectionVariables.set('createdIds', JSON.stringify(ids));\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"duplicate body check\",\n  \"state\": \"wanted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-PUT-003] PUT wish-items - explicitly clear webLink to empty string",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-PUT-003 — Explicitly clear webLink (empty string)\n// Expected (api cases table): 200; webLink = \"\"; name and state are applied\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst item = pm.response.json();\nconst sent = JSON.parse(pm.request.body.raw);\n\npm.test('Status 200', () => {\n  pm.response.to.have.status(200);\n});\n\npm.test('Item matches contract', () => {\n  checkItem(item);\n});\n\npm.test('webLink is cleared to empty string', () => {\n  pm.expect(item.webLink).to.eql('');\n});\n\npm.test('name and state are updated', () => {\n  pm.expect(item.name).to.eql(sent.name);\n  pm.expect(item.state).to.eql(sent.state);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Power bank\",\n    \"state\": \"wanted\",\n    \"webLink\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{fixtureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{fixtureId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-PUT-004] PUT wish-items - webLink null behaviour",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-PUT-004 — webLink is explicitly null\n// Expected (api cases table): 200; null is converted to empty string on the server.\n// Not reachable via UI — the frontend always sends \"\" instead of null by default.\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst item = pm.response.json();\n\npm.test('Status 200', () => {\n  pm.response.to.have.status(200);\n});\n\npm.test('Item matches contract', () => {\n  checkItem(item);\n});\n\npm.test('webLink null is stored as empty string', () => {\n  pm.expect(item.webLink).to.eql('');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Power bank\",\n    \"state\": \"wanted\",\n    \"webLink\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{fixtureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{fixtureId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-PUT-005] PUT wish-items - reject empty object body",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-PUT-005 — empty object body\n// Expected (api cases table): 400, name is required\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// Missing required field \"name\" is rejected\npm.test('Status 400: name is required', () => {\n  pm.response.to.have.status(400);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{fixtureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{fixtureId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-PUT-006] PUT wish-items/{id} - update non-existing item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-PUT-006 — Update a non-existing item (id=999999)\n// Expected (api cases table): 404; PUT does not create a new item\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\npm.test('Status 404: item not found', () => {\n  pm.response.to.have.status(404);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"ghost item\",\n    \"state\": \"wanted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "999999"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-PUT-007] PUT wish-items - reject request without id in url",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-PUT-007 — no id in url \n// Expected (api cases table): 405, item is rejected\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\n// This endpoint is unavalible \npm.test('Status 405: method not allowed', () => {\n  pm.response.to.have.status(405);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"no id\",\n  \"state\":\"wanted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-PUT-009] PUT wish-items - two identical requests give same result",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-PUT-009 — Idempotency: two identical PUT requests in a row\n// Expected (api cases table): 200 both times; data is identical; createdDate unchanged\n// This request sends the first PUT as usual; the test script sends a second,\n// identical PUT and compares both responses.\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst baseUrl = pm.environment.get('baseUrl');\nconst firstItem = pm.response.json();\n\npm.test('First request: status 200', () => {\n  pm.response.to.have.status(200);\n});\n\n// Send the second, identical PUT from the test script\npm.sendRequest({\n  url: pm.request.url.toString(),\n  method: 'PUT',\n  header: { 'Content-Type': 'application/json' },\n  body: pm.request.body\n}, (err, res) => {\n  if (err) { throw new Error(`Second request failed: ${err}`); }\n\n  pm.test('Second request: status 200', () => {\n    pm.expect(res.code).to.eql(200);\n  });\n\n  const secondItem = res.json();\n\n  pm.test('Data is identical after both requests', () => {\n    pm.expect(secondItem.name).to.eql(firstItem.name);\n    pm.expect(secondItem.state).to.eql(firstItem.state);\n    pm.expect(secondItem.webLink).to.eql(firstItem.webLink);\n  });\n\n  pm.test('createdDate did not change', () => {\n    pm.expect(secondItem.createdDate).to.eql(firstItem.createdDate);\n  });\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"idempotency check\",\n  \"webLink\": \"https://example.com\",\n  \"state\": \"wanted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{fixtureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{fixtureId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-PUT-011] PUT wish-items - full replace wipes omitted webLink",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-PUT-011 — Full replace wipes an omitted field (webLink is not in the body)\n// Expected (api cases table): 200; webLink is wiped to \"\"\n// Confirms PUT semantics: full replace, not partial update\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\nconst item = pm.response.json();\n\npm.test('Status 200', () => {\n  pm.response.to.have.status(200);\n});\n\npm.test('Item matches contract', () => {\n  checkItem(item);\n});\n\n// webLink was not in the request body — full replace must wipe it, not keep the old value\npm.test('Omitted webLink is wiped to empty string', () => {\n  pm.expect(item.webLink).to.eql('');\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"full replace check\",\n  \"state\": \"wanted\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{fixtureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{fixtureId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-DEL-003] DELETE wish-items - repeated delete returns 404",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const baseUrl = pm.environment.get('baseUrl');\nconst id = pm.collectionVariables.get('fixtureId');\n\nconst del = () => new Promise((resolve) => {\n  pm.sendRequest({\n    url: `${baseUrl}/wish-items/${id}`,\n    method: 'DELETE'\n  }, (err, res) => {\n    if (err) { throw new Error(`Первое удаление не выполнено: ${err}`); }\n    if (res.code !== 204) { throw new Error(`Первое удаление вернуло ${res.code}, ожидался 204`); }\n    resolve();\n  });\n});\n\n(async () => {\n  await del();\n\n  // объект удалён — убираем его из реестра\n  const ids = JSON.parse(pm.collectionVariables.get('createdIds') || '[]');\n  const left = ids.filter(x => String(x) !== String(id));\n  pm.collectionVariables.set('createdIds', JSON.stringify(left));\n})();"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// WISH-DEL-003 — repeated delition \n// Expected (api cases table): 405, item is rejected\n// Common check \"No server error (5xx)\" runs from the smoke folder script\n\npm.test('Status 404: wish item not found', () => {\n  pm.response.to.have.status(404);\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{fixtureId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{fixtureId}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "const baseUrl = pm.environment.get('baseUrl');",
+              "const runId = pm.collectionVariables.get('runId');",
+              "",
+              "pm.sendRequest({",
+              "  url: `${baseUrl}/wish-items`,",
+              "  method: 'POST',",
+              "  header: { 'Content-Type': 'application/json' },",
+              "  body: { mode: 'raw', raw: JSON.stringify({",
+              "    name: `fx-${runId}-${pm.info.requestName}`,",
+              "    webLink: 'https://example.com/fixture',",
+              "    state: 'wanted'",
+              "  })}",
+              "}, (err, res) => {",
+              "  if (err) { throw new Error(`Фикстура не создана: ${err}`); }",
+              "  if (res.code >= 300) { throw new Error(`Фикстура не создана, код ${res.code}`); }",
+              "",
+              "  const item = res.json();",
+              "  pm.collectionVariables.set('fixtureId', item.id);",
+              "",
+              "  const ids = JSON.parse(pm.collectionVariables.get('createdIds') || '[]');",
+              "  ids.push(item.id);",
+              "  pm.collectionVariables.set('createdIds', JSON.stringify(ids));",
+              "});"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {},
+            "exec": [
+              "const raw = pm.collectionVariables.get('createdIds') || '[]';",
+              "const ids = JSON.parse(raw);",
+              "",
+              "pm.test('No server error (5xx)', () => {",
+              "  pm.expect(pm.response.code, 'status code').to.be.below(500);",
+              "})",
+              "",
+              "if (pm.request.method === 'POST' && pm.response.code < 300 && pm.response.text()) {",
+              "  ids.push(pm.response.json().id);",
+              "  pm.collectionVariables.set('createdIds', JSON.stringify(ids));",
+              "}",
+              "",
+              "if (pm.request.method === 'DELETE' && pm.response.code < 300) {",
+              "  const deletedId = pm.variables.replaceIn(pm.request.url.toString()).split('/').pop();",
+              "  const left = ids.filter(id => String(id) !== String(deletedId));",
+              "  pm.collectionVariables.set('createdIds', JSON.stringify(left));",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "id validation (data-driven)",
+      "item": [
+        {
+          "name": "[WISH-GET-ID] GET wish-items/{id} - invalid or non-existing id always returns 404",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cases = [\n  { id: '0', expected: 404 },\n  { id: '-1', expected: 404 },\n  { id: 'abc', expected: 404 },\n  { id: '^&', expected: 404 },\n  { id: '999999', expected: 404 },\n  { id: '99999999999999999999', expected: 404 }\n];\n\ncases.forEach(c => {\n  pm.sendRequest({\n    url: pm.variables.replaceIn('{{baseUrl}}') + '/wish-items/' + c.id,\n    method: 'GET'\n  }, (err, res) => {\n    pm.test('id=' + c.id + ' -> expected ' + c.expected + ', got ' + res.code, () => {\n      pm.expect(res.code).to.eql(c.expected);\n    });\n  });\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{id}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[WISH-DEL-ID] DELETE wish-items/{id} - invalid or non-existing id always returns 404",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cases = [\n  { id: '0', expected: 404 },\n  { id: '-1', expected: 404 },\n  { id: 'abc', expected: 404 },\n  { id: '^&', expected: 404 },\n  { id: '999999', expected: 404 },\n  { id: '99999999999999999999', expected: 404 }\n];\n\ncases.forEach(c => {\n  pm.sendRequest({\n    url: pm.variables.replaceIn('{{baseUrl}}') + '/wish-items/' + c.id,\n    method: 'DELETE'\n  }, (err, res) => {\n    pm.test('id=' + c.id + ' -> expected ' + c.expected + ', got ' + res.code, () => {\n      pm.expect(res.code).to.eql(c.expected);\n    });\n  });\n});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/wish-items/{{id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wish-items",
+                "{{id}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Teardown — cleanup fixtures",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const baseUrl = pm.environment.get('baseUrl');",
+              "const ids = JSON.parse(pm.collectionVariables.get('createdIds') || '[]');",
+              "",
+              "console.log(`Teardown: удаляю ${ids.length} объект(ов) прогона ${pm.collectionVariables.get('runId')}`);",
+              "",
+              "const del = (id) => new Promise((resolve) => {",
+              "  pm.sendRequest({",
+              "    url: `${baseUrl}/wish-items/${id}`,",
+              "    method: 'DELETE'",
+              "  }, (err, res) => {",
+              "    if (err) { console.log(`DELETE ${id}: ошибка ${err}`); }",
+              "    else if (res.code >= 300 && res.code !== 404) { console.log(`DELETE ${id}: код ${res.code}`); }",
+              "    resolve();",
+              "  });",
+              "});",
+              "",
+              "(async () => {",
+              "  for (const id of ids) {",
+              "    await del(id);",
+              "  }",
+              "  console.log('Teardown: удаление завершено');",
+              "})();"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const ids = JSON.parse(pm.collectionVariables.get('createdIds') || '[]');",
+              "",
+              "pm.test('Уборка: объектов прогона в базе не осталось', () => {",
+              "  const body = pm.response.json();",
+              "  const existing = (Array.isArray(body) ? body : []).map(i => String(i.id));",
+              "  const left = ids.filter(id => existing.includes(String(id)));",
+              "",
+              "  if (left.length) {",
+              "    console.log('Не удалено, id:', left.join(', '));",
+              "  }",
+              "  pm.expect(left, 'остатки объектов прогона').to.have.lengthOf(0);",
+              "});",
+              "",
+              "pm.collectionVariables.unset('runId');",
+              "pm.collectionVariables.unset('createdIds');"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/wish-items",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "wish-items"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          "if (!pm.collectionVariables.get('runId')) {",
+          "  pm.collectionVariables.set('runId', Date.now().toString(36));",
+          "}",
+          "if (!pm.collectionVariables.get('createdIds')) {",
+          "  pm.collectionVariables.set('createdIds', JSON.stringify([]));",
+          "}",
+          "",
+          "checkItem = (item) => {",
+          "  ['id', 'name', 'webLink', 'createdDate', 'updatedDate', 'state']",
+          "    .forEach(f => pm.expect(item, `поле ${f}`).to.have.property(f));",
+          "  pm.expect(['wanted', 'purchased', 'archived'], 'state из enum').to.include(item.state);",
+          "};"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "fixtureId",
+      "value": ""
+    },
+    {
+      "key": "runId",
+      "value": ""
+    },
+    {
+      "key": "createdIds",
+      "value": ""
+    }
+  ]
+}

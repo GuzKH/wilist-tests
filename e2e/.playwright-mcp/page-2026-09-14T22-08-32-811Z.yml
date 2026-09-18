@@ -1,0 +1,50 @@
+- main [ref=f3e5]:
+  - generic [ref=f3e6]:
+    - paragraph [ref=f3e7]: wilist
+    - heading "Things you want, in one place." [level=1] [ref=f3e8]
+    - paragraph [ref=f3e9]: Add links, track what you still want, and archive the rest.
+  - generic [ref=f3e10]:
+    - generic [ref=f3e11]:
+      - generic [ref=f3e12]: Name
+      - textbox "Name" [ref=f3e13]:
+        - /placeholder: Mechanical keyboard
+    - generic [ref=f3e14]:
+      - generic [ref=f3e15]: Link
+      - textbox "Link" [ref=f3e16]:
+        - /placeholder: https://…
+    - generic [ref=f3e17]:
+      - generic [ref=f3e18]: State
+      - combobox "State" [ref=f3e19]:
+        - option "wanted" [selected]
+        - option "purchased"
+        - option "archived"
+    - button "Add item" [active] [ref=f3e20] [cursor=pointer]
+  - generic [ref=f3e21]:
+    - generic [ref=f3e22]:
+      - heading "Your list" [level=2] [ref=f3e23]
+      - generic [ref=f3e24]: 2 items
+    - list [ref=f3e25]:
+      - listitem [ref=f3e34]:
+        - generic [ref=f3e35]:
+          - paragraph [ref=f3e36]: ui-006-name
+          - link "not-a-url" [ref=f3e37] [cursor=pointer]:
+            - /url: not-a-url
+        - generic [ref=f3e38]:
+          - generic [ref=f3e39]: State
+          - combobox "State" [ref=f3e40]:
+            - option "wanted" [selected]
+            - option "purchased"
+            - option "archived"
+        - button "Delete ui-006-name" [ref=f3e41] [cursor=pointer]: Remove
+      - listitem [ref=f3e26]:
+        - generic [ref=f3e27]:
+          - paragraph [ref=f3e28]: "!@#$%^&45678ERTYUIO. &*()FGHJKL VBNM<45678"
+          - link "example.com" [ref=f3e29] [cursor=pointer]:
+            - /url: https://example.com/very/long/path?query=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890&x=1&y=2&z=3#fragment
+        - generic [ref=f3e30]:
+          - generic [ref=f3e31]: State
+          - combobox "State" [ref=f3e32]:
+            - option "wanted" [selected]
+            - option "purchased"
+            - option "archived"
+        - button "Delete !@#$%^&45678ERTYUIO. &*()FGHJKL VBNM<45678" [ref=f3e33] [cursor=pointer]: Remove

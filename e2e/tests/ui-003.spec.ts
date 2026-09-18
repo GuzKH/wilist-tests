@@ -1,0 +1,20 @@
+import { test, expect } from '@playwright/test';
+
+test('UI-003 — Submit with empty Name', async ({ page }) => {
+  await page.goto('/');
+
+  const form = page.locator('form');
+  const nameInput = form.getByRole('textbox', { name: 'Name' });
+  const linkInput = form.getByRole('textbox', { name: 'Link' });
+
+  const beforeCount = await page.locator('li').count();
+
+  await linkInput.fill('https://test.com');
+  await form.getByRole('button', { name: 'Add item' }).click();
+
+  // The required Name field must block submission through native browser validation.
+  await expect(nameInput).toHaveJSProperty('validity.valid', false);
+
+  // Because validation rejected the submission, no new item must be added.
+  await expect(page.locator('li')).toHaveCount(beforeCount);
+});
