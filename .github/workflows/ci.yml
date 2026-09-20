@@ -1,0 +1,19 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout wilist-tests
+        uses: actions/checkout@v4
+
+      - name: Checkout wilist app
+        uses: actions/checkout@v4
+        with:
+          repository: ppeerr/wilist
+          token: ${{ secrets.PPEERR_PAT }}
+          path: wilist-app
+
+      # дальше шаги: собрать wilist, запустить Playwright и т.д.
