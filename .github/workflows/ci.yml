@@ -45,6 +45,14 @@ jobs:
       - name: Install Newman + Allure reporter
         run: npm install -g newman newman-reporter-allure
 
+      # Диагностика: куда npm ставит глобальные пакеты и виден ли там репортер
+      - name: Debug npm global path
+        run: |
+          echo "npm root -g: $(npm root -g)"
+          echo "NODE_PATH: ${NODE_PATH:-<empty>}"
+          echo "--- contents of global node_modules ---"
+          ls "$(npm root -g)"
+
       # continue-on-error нужен, чтобы упавшие тесты не обрывали job раньше времени —
       # иначе шаг upload ниже не получит результаты для отчёта
       - name: Run Postman tests
@@ -56,11 +64,13 @@ jobs:
             --reporter-allure-export allure-results-api
         continue-on-error: true
 
+      # Диагностика: создалась ли папка с результатами Allure после прогона
       - name: Debug allure results
         run: |
           echo "Contents of allure-results-api:"
           ls -la allure-results-api || echo "directory does not exist"
 
+      # if: always() — выгружаем результаты, даже если предыдущий шаг завершился с ошибкой
       - name: Upload API allure results
         if: always()
         uses: actions/upload-artifact@v4
@@ -118,6 +128,13 @@ jobs:
         run: npx playwright test
         continue-on-error: true
 
+      # Диагностика: создалась ли папка с результатами Allure после прогона UI-тестов
+      - name: Debug UI allure results
+        working-directory: e2e
+        run: |
+          echo "Contents of e2e/allure-results:"
+          ls -la allure-results || echo "directory does not exist"
+
       - name: Upload UI allure results
         if: always()
         uses: actions/upload-artifact@v4
@@ -132,14 +149,18 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
+      # continue-on-error — чтобы отсутствие одного из артефактов не валило весь job;
+      # так будет видно хотя бы ту часть отчёта, которая собралась
       - name: Download API allure results
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: allure-results-api
           path: allure-results/api
 
       - name: Download UI allure results
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: allure-results-ui
           path: allure-results/ui
@@ -148,7 +169,9 @@ jobs:
         run: npm install -g allure-commandline
 
       - name: Generate combined Allure report
-        run: allure generate allure-results/api allure-results/ui --clean -o allure-report
+        run: |
+          mkdir -p allure-results/api allure-results/ui
+          allure generate allure-results/api allure-results/ui --clean -o allure-report
 
       - name: Upload Allure HTML report
         uses: actions/upload-artifact@v4
