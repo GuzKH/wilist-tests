@@ -1,14 +1,32 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same branch/PR instead of letting them queue
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: '1.27.1'
+  NODE_VERSION: '20'
+  WILIST_PORT: '8081'
 
 jobs:
-  api-tests:
+  # Builds the wilist binary once and hands it to both test jobs below,
+  # instead of each job rebuilding the whole app from scratch.
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Checkout wilist-tests
-        uses: actions/checkout@v4
-
       - name: Checkout wilist app
         uses: actions/checkout@v4
         with:
@@ -19,72 +37,83 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.27.1'
+          go-version: ${{ env.GO_VERSION }}
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: wilist-app/web/package-lock.json
 
       - name: Build React UI
         working-directory: wilist-app/web
         run: |
-          npm install
+          npm ci
           npm run build
 
       - name: Build wilist binary
         working-directory: wilist-app
         run: go build -o wilist .
 
+      - name: Upload wilist binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: wilist-binary
+          path: wilist-app/wilist
+          retention-days: 1
+
+  api-tests:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout wilist-tests
+        uses: actions/checkout@v4
+
+      - name: Download wilist binary
+        uses: actions/download-artifact@v4
+        with:
+          name: wilist-binary
+
+      # Poll /health instead of a fixed sleep — more reliable on a slow runner
       - name: Start wilist
-        working-directory: wilist-app
         run: |
-          PORT=8081 ./wilist &
-          sleep 2
+          chmod +x ./wilist
+          PORT=${{ env.WILIST_PORT }} ./wilist &
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:${{ env.WILIST_PORT }}/health" > /dev/null; then
+              echo "wilist is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "wilist did not become healthy in time" >&2
+          exit 1
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # Versions pinned so a new reporter/newman release can't silently
+      # change behavior or break the Allure output — verify these match
+      # what you've tested locally (npm list -g --depth=0) before relying on them
       - name: Install Newman + Allure reporter
-        run: npm install -g newman newman-reporter-allure
+        run: npm install -g newman@6.2.1 newman-reporter-allure@1.0.0
 
-      # Диагностика: куда npm ставит глобальные пакеты и виден ли там репортер
-      - name: Debug npm global path
-        run: |
-          echo "npm root -g: $(npm root -g)"
-          echo "NODE_PATH: ${NODE_PATH:-<empty>}"
-          echo "--- contents of global node_modules ---"
-          ls "$(npm root -g)"
-
-      # Диагностика
-      - name: Check allure reporter
-        run: |
-          echo "--- installed version ---"
-          npm list -g newman-reporter-allure || true
-          echo "--- newman help, allure mentions ---"
-          newman run --help 2>&1 | grep -i allure || echo "no allure options in help"
-
-      # continue-on-error нужен, чтобы упавшие тесты не обрывали job раньше времени —
-      # иначе шаг upload ниже не получит результаты для отчёта
+      # No continue-on-error: a real test failure must fail the job.
+      # if: always() on the upload step below is enough to still get results.
       - name: Run Postman tests
         env:
           ALLURE_RESULTS_DIR: allure-results-api
         run: |
           newman run postman/wilist.postman_collection.json \
             -e postman/wilist.postman_environment.json \
-            --env-var baseUrl=localhost:8081 \
+            --env-var baseUrl=localhost:${{ env.WILIST_PORT }} \
             --reporters cli,allure \
             --reporter-allure-resultsDir allure-results-api
-        continue-on-error: true
 
-      # Диагностика: создалась ли папка с результатами Allure после прогона
-      - name: Debug allure results
-        run: |
-          echo "--- allure-results-api (ожидаемый путь) ---"
-          ls -la allure-results-api || echo "directory does not exist"
-          echo "--- allure-results (дефолтный путь репортера) ---"
-          ls -la allure-results || echo "directory does not exist"
-          echo "--- поиск любых allure-папок в рабочей директории ---"
-          find . -maxdepth 2 -type d -name "*allure*" || true
-
-      # if: always() — выгружаем результаты, даже если предыдущий шаг завершился с ошибкой
       - name: Upload API allure results
         if: always()
         uses: actions/upload-artifact@v4
@@ -93,61 +122,61 @@ jobs:
           path: allure-results-api
 
   e2e-ui-tests:
+    needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout wilist-tests
         uses: actions/checkout@v4
 
-      - name: Checkout wilist app
-        uses: actions/checkout@v4
+      - name: Download wilist binary
+        uses: actions/download-artifact@v4
         with:
-          repository: ppeerr/wilist
-          token: ${{ secrets.PPEERR_PAT }}
-          path: wilist-app
+          name: wilist-binary
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.27.1'
+      - name: Start wilist
+        run: |
+          chmod +x ./wilist
+          PORT=${{ env.WILIST_PORT }} ./wilist &
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:${{ env.WILIST_PORT }}/health" > /dev/null; then
+              echo "wilist is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "wilist did not become healthy in time" >&2
+          exit 1
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Build React UI
-        working-directory: wilist-app/web
-        run: |
-          npm install
-          npm run build
-
-      - name: Build wilist binary
-        working-directory: wilist-app
-        run: go build -o wilist .
-
-      - name: Start wilist
-        working-directory: wilist-app
-        run: |
-          PORT=8081 ./wilist &
-          sleep 2
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
 
       - name: Install Playwright deps
         working-directory: e2e
-        run: |
-          npm ci
-          npx playwright install --with-deps
+        run: npm ci
 
+      # Cache the downloaded browser binaries themselves (the slow part of
+      # `playwright install`), keyed off the lockfile so it busts on version bumps
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+
+      - name: Install Playwright browsers
+        working-directory: e2e
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps
+
+      # No continue-on-error here either — same reasoning as the Postman job
       - name: Run Playwright tests
         working-directory: e2e
         run: npx playwright test
-        continue-on-error: true
-
-      # Диагностика: создалась ли папка с результатами Allure после прогона UI-тестов
-      - name: Debug UI allure results
-        working-directory: e2e
-        run: |
-          echo "Contents of e2e/allure-results:"
-          ls -la allure-results || echo "directory does not exist"
 
       - name: Upload UI allure results
         if: always()
@@ -156,15 +185,16 @@ jobs:
           name: allure-results-ui
           path: e2e/allure-results
 
-  # Собирает результаты из обеих job выше в один общий HTML-отчёт Allure
-  # needs + if: always() — запускается после api-tests и e2e-ui-tests, даже если одна из них упала
+  # Merges results from both test jobs into one combined Allure report.
+  # needs + if: always() — runs even if one of the test jobs failed.
   allure-report:
     needs: [api-tests, e2e-ui-tests]
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      # continue-on-error — чтобы отсутствие одного из артефактов не валило весь job;
-      # так будет видно хотя бы ту часть отчёта, которая собралась
+      # continue-on-error here (not on the test steps) is fine: a missing
+      # artifact from one job just means a smaller report, not a false-green build
       - name: Download API allure results
         uses: actions/download-artifact@v4
         continue-on-error: true
@@ -180,7 +210,7 @@ jobs:
           path: allure-results/ui
 
       - name: Install Allure CLI
-        run: npm install -g allure-commandline
+        run: npm install -g allure-commandline@2.29.0
 
       - name: Generate combined Allure report
         run: |
