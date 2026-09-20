@@ -53,6 +53,14 @@ jobs:
           echo "--- contents of global node_modules ---"
           ls "$(npm root -g)"
 
+      # Диагностика
+      - name: Check allure reporter
+        run: |
+          echo "--- installed version ---"
+          npm list -g newman-reporter-allure || true
+          echo "--- newman help, allure mentions ---"
+          newman run --help 2>&1 | grep -i allure || echo "no allure options in help"
+
       # continue-on-error нужен, чтобы упавшие тесты не обрывали job раньше времени —
       # иначе шаг upload ниже не получит результаты для отчёта
       - name: Run Postman tests
