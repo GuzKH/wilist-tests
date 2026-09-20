@@ -29,7 +29,7 @@ jobs:
         with:
           go-version: '1.27.1'
 
-      # Шаг 4: ставим Node.js — нужен и для сборки React UI, и для запуска Playwright
+      # Шаг 4: ставим Node.js — нужен и для сборки React UI, и для Playwright, и для Newman
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
@@ -49,6 +49,7 @@ jobs:
         run: go build -o wilist .
 
       # Шаг 7: запускаем собранный бинарник в фоне на порту 8081
+      # (используем 8081 и для Postman, и для Playwright — в CI это один и тот же поднятый инстанс)
       # sleep даёт пару секунд приложению подняться перед тем, как тесты начнут к нему стучаться
       - name: Start wilist
         working-directory: wilist-app
@@ -56,14 +57,27 @@ jobs:
           PORT=8081 ./wilist &
           sleep 2
 
-      # Шаг 8: ставим зависимости для Playwright-тестов и сами браузеры, на которых тесты будут выполняться
+      # Шаг 8: ставим Newman — CLI-раннер для Postman-коллекций
+      - name: Install Newman
+        run: npm install -g newman
+
+      # Шаг 9: прогоняем Postman-коллекцию
+      # --env-var подменяет baseUrl из environment (localhost:8080) на localhost:8081,
+      # не трогая сам файл environment
+      - name: Run Postman tests
+        run: |
+          newman run postman/wilist.postman_collection.json \
+            -e postman/wilist.postman_environment.json \
+            --env-var baseUrl=localhost:8081
+
+      # Шаг 10: ставим зависимости для Playwright-тестов и браузеры, на которых тесты выполняются
       - name: Install Playwright deps
         working-directory: e2e
         run: |
           npm ci
           npx playwright install --with-deps
 
-      # Шаг 9: непосредственно запуск тестов
+      # Шаг 11: непосредственно запуск UI-тестов
       - name: Run Playwright tests
         working-directory: e2e
         run: npx playwright test
