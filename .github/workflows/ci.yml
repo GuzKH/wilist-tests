@@ -57,6 +57,7 @@ jobs:
       # иначе шаг upload ниже не получит результаты для отчёта
       - name: Run Postman tests
         run: |
+          export NODE_PATH="$(npm root -g)"
           newman run postman/wilist.postman_collection.json \
             -e postman/wilist.postman_environment.json \
             --env-var baseUrl=localhost:8081 \
