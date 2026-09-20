@@ -1,14 +1,21 @@
 name: CI
 
+# Когда запускать: при пуше в любую ветку и при открытии/обновлении pull request
 on: [push, pull_request]
 
 jobs:
   test:
+    # На какой машине выполняются шаги
     runs-on: ubuntu-latest
+
     steps:
+      # Шаг 1: скачиваем код самого репозитория wilist-tests (где лежат тесты)
       - name: Checkout wilist-tests
         uses: actions/checkout@v4
 
+      # Шаг 2: скачиваем код приложения wilist из отдельного приватного репозитория ppeerr/wilist
+      # token нужен, потому что репозиторий чужой, но у тебя есть к нему write-доступ
+      # path кладёт код в подпапку wilist-app, чтобы не смешивался с кодом тестов
       - name: Checkout wilist app
         uses: actions/checkout@v4
         with:
@@ -16,32 +23,47 @@ jobs:
           token: ${{ secrets.PPEERR_PAT }}
           path: wilist-app
 
+      # Шаг 3: ставим Go нужной версии (как у тебя локально)
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'   # уточни свою версию
+          go-version: '1.27.1'
 
-      - name: Build wilist
+      # Шаг 4: ставим Node.js — нужен и для сборки React UI, и для запуска Playwright
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Шаг 5: собираем React UI (папка web внутри wilist-app)
+      # результат сборки — web/dist — Go потом встраивает в бинарник через go:embed
+      - name: Build React UI
+        working-directory: wilist-app/web
+        run: |
+          npm install
+          npm run build
+
+      # Шаг 6: собираем сам Go-бинарник wilist (уже с встроенным UI)
+      - name: Build wilist binary
         working-directory: wilist-app
-        run: go build -o wilist .   # уточни точную команду сборки
+        run: go build -o wilist .
 
+      # Шаг 7: запускаем собранный бинарник в фоне на порту 8081
+      # sleep даёт пару секунд приложению подняться перед тем, как тесты начнут к нему стучаться
       - name: Start wilist
         working-directory: wilist-app
         run: |
           PORT=8081 ./wilist &
           sleep 2
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
+      # Шаг 8: ставим зависимости для Playwright-тестов и сами браузеры, на которых тесты будут выполняться
       - name: Install Playwright deps
         working-directory: e2e
         run: |
           npm ci
           npx playwright install --with-deps
 
+      # Шаг 9: непосредственно запуск тестов
       - name: Run Playwright tests
         working-directory: e2e
         run: npx playwright test
