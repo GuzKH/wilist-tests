@@ -16,4 +16,32 @@ jobs:
           token: ${{ secrets.PPEERR_PAT }}
           path: wilist-app
 
-      # дальше шаги: собрать wilist, запустить Playwright и т.д.
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'   # уточни свою версию
+
+      - name: Build wilist
+        working-directory: wilist-app
+        run: go build -o wilist .   # уточни точную команду сборки
+
+      - name: Start wilist
+        working-directory: wilist-app
+        run: |
+          PORT=8081 ./wilist &
+          sleep 2
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright deps
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        working-directory: e2e
+        run: npx playwright test
