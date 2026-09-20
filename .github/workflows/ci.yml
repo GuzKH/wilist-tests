@@ -100,7 +100,7 @@ jobs:
       # change behavior or break the Allure output — verify these match
       # what you've tested locally (npm list -g --depth=0) before relying on them
       - name: Install Newman + Allure reporter
-        run: npm install -g newman@6.2.1 newman-reporter-allure@1.0.0
+        run: npm install -g newman@6.2.2 newman-reporter-allure@3.12.2
 
       # No continue-on-error: a real test failure must fail the job.
       # if: always() on the upload step below is enough to still get results.
