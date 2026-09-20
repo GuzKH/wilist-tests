@@ -64,20 +64,25 @@ jobs:
       # continue-on-error нужен, чтобы упавшие тесты не обрывали job раньше времени —
       # иначе шаг upload ниже не получит результаты для отчёта
       - name: Run Postman tests
+        env:
+          ALLURE_RESULTS_DIR: allure-results-api
         run: |
-          export NODE_PATH="$(npm root -g)"
           newman run postman/wilist.postman_collection.json \
             -e postman/wilist.postman_environment.json \
             --env-var baseUrl=localhost:8081 \
             --reporters cli,allure \
-            --reporter-allure-export allure-results-api
+            --reporter-allure-resultsDir allure-results-api
         continue-on-error: true
 
       # Диагностика: создалась ли папка с результатами Allure после прогона
       - name: Debug allure results
         run: |
-          echo "Contents of allure-results-api:"
+          echo "--- allure-results-api (ожидаемый путь) ---"
           ls -la allure-results-api || echo "directory does not exist"
+          echo "--- allure-results (дефолтный путь репортера) ---"
+          ls -la allure-results || echo "directory does not exist"
+          echo "--- поиск любых allure-папок в рабочей директории ---"
+          find . -maxdepth 2 -type d -name "*allure*" || true
 
       # if: always() — выгружаем результаты, даже если предыдущий шаг завершился с ошибкой
       - name: Upload API allure results
