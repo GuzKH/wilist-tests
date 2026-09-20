@@ -1,21 +1,14 @@
 name: CI
 
-# Когда запускать: при пуше в любую ветку и при открытии/обновлении pull request
 on: [push, pull_request]
 
 jobs:
-  test:
-    # На какой машине выполняются шаги
+  api-tests:
     runs-on: ubuntu-latest
-
     steps:
-      # Шаг 1: скачиваем код самого репозитория wilist-tests (где лежат тесты)
       - name: Checkout wilist-tests
         uses: actions/checkout@v4
 
-      # Шаг 2: скачиваем код приложения wilist из отдельного приватного репозитория ppeerr/wilist
-      # token нужен, потому что репозиторий чужой, но у тебя есть к нему write-доступ
-      # path кладёт код в подпапку wilist-app, чтобы не смешивался с кодом тестов
       - name: Checkout wilist app
         uses: actions/checkout@v4
         with:
@@ -23,61 +16,138 @@ jobs:
           token: ${{ secrets.PPEERR_PAT }}
           path: wilist-app
 
-      # Шаг 3: ставим Go нужной версии (как у тебя локально)
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.27.1'
 
-      # Шаг 4: ставим Node.js — нужен и для сборки React UI, и для Playwright, и для Newman
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # Шаг 5: собираем React UI (папка web внутри wilist-app)
-      # результат сборки — web/dist — Go потом встраивает в бинарник через go:embed
       - name: Build React UI
         working-directory: wilist-app/web
         run: |
           npm install
           npm run build
 
-      # Шаг 6: собираем сам Go-бинарник wilist (уже с встроенным UI)
       - name: Build wilist binary
         working-directory: wilist-app
         run: go build -o wilist .
 
-      # Шаг 7: запускаем собранный бинарник в фоне на порту 8081
-      # (используем 8081 и для Postman, и для Playwright — в CI это один и тот же поднятый инстанс)
-      # sleep даёт пару секунд приложению подняться перед тем, как тесты начнут к нему стучаться
       - name: Start wilist
         working-directory: wilist-app
         run: |
           PORT=8081 ./wilist &
           sleep 2
 
-      # Шаг 8: ставим Newman — CLI-раннер для Postman-коллекций
-      - name: Install Newman
-        run: npm install -g newman
+      - name: Install Newman + Allure reporter
+        run: npm install -g newman newman-reporter-allure
 
-      # Шаг 9: прогоняем Postman-коллекцию
-      # --env-var подменяет baseUrl из environment (localhost:8080) на localhost:8081,
-      # не трогая сам файл environment
+      # continue-on-error нужен, чтобы упавшие тесты не обрывали job раньше времени —
+      # иначе шаг upload ниже не получит результаты для отчёта
       - name: Run Postman tests
         run: |
           newman run postman/wilist.postman_collection.json \
             -e postman/wilist.postman_environment.json \
-            --env-var baseUrl=localhost:8081
+            --env-var baseUrl=localhost:8081 \
+            --reporters cli,allure \
+            --reporter-allure-export allure-results-api
+        continue-on-error: true
 
-      # Шаг 10: ставим зависимости для Playwright-тестов и браузеры, на которых тесты выполняются
+      # if: always() — выгружаем результаты, даже если предыдущий шаг завершился с ошибкой
+      - name: Upload API allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-api
+          path: allure-results-api
+
+  e2e-ui-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout wilist-tests
+        uses: actions/checkout@v4
+
+      - name: Checkout wilist app
+        uses: actions/checkout@v4
+        with:
+          repository: ppeerr/wilist
+          token: ${{ secrets.PPEERR_PAT }}
+          path: wilist-app
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.1'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build React UI
+        working-directory: wilist-app/web
+        run: |
+          npm install
+          npm run build
+
+      - name: Build wilist binary
+        working-directory: wilist-app
+        run: go build -o wilist .
+
+      - name: Start wilist
+        working-directory: wilist-app
+        run: |
+          PORT=8081 ./wilist &
+          sleep 2
+
       - name: Install Playwright deps
         working-directory: e2e
         run: |
           npm ci
           npx playwright install --with-deps
 
-      # Шаг 11: непосредственно запуск UI-тестов
       - name: Run Playwright tests
         working-directory: e2e
         run: npx playwright test
+        continue-on-error: true
+
+      - name: Upload UI allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-ui
+          path: e2e/allure-results
+
+  # Собирает результаты из обеих job выше в один общий HTML-отчёт Allure
+  # needs + if: always() — запускается после api-tests и e2e-ui-tests, даже если одна из них упала
+  allure-report:
+    needs: [api-tests, e2e-ui-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download API allure results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results-api
+          path: allure-results/api
+
+      - name: Download UI allure results
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results-ui
+          path: allure-results/ui
+
+      - name: Install Allure CLI
+        run: npm install -g allure-commandline
+
+      - name: Generate combined Allure report
+        run: allure generate allure-results/api allure-results/ui --clean -o allure-report
+
+      - name: Upload Allure HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report
