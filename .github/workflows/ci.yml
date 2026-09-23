@@ -176,7 +176,7 @@ jobs:
       # No continue-on-error here either — same reasoning as the Postman job
       - name: Run Playwright tests
         working-directory: e2e
-        run: npx playwright test
+        run: npx playwright test --project=chromium
 
       - name: Upload UI allure results
         if: always()

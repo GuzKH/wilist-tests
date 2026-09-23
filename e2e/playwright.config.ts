@@ -44,16 +44,10 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
-    /* Firefox и WebKit добавим, когда наберётся стабильный набор тестов. */
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
+      // WebKit = the engine behind Safari (and almost all browsers on iOS)
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+     // Gecko = the engine behind Firefox
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
 
     /* Test against mobile viewports. */
     // {

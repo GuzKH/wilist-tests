@@ -4,9 +4,10 @@
   "description": "Simple Go wishlist API with a React UI.",
   "main": "index.js",
   "scripts": {
-    "test": "playwright test",
-"allure:report": "allure generate ./allure-results && allure open ./allure-report",
-"test:allure": "rm -rf allure-results && playwright test; allure generate ./allure-results && allure open ./allure-report"
+    "test": "playwright test --project=chromium",
+    "test:all-browsers": "playwright test",
+    "allure:report": "allure generate ./allure-results && allure open ./allure-report",
+    "test:allure": "rm -rf allure-results && playwright test --project=chromium; allure generate ./allure-results && allure open ./allure-report"
   },
   "repository": {
     "type": "git",
