@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
+import * as allure from 'allure-js-commons';  
 
-test('UI-003 — Submit with empty Name', async ({ page }) => {
+
+test('UI-003 — Submit with empty Name', { tag: '@regression' }, async ({ page }) => {
   await page.goto('/');
 
   const form = page.locator('form');

@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import * as allure from 'allure-js-commons';
 
 test.describe('wilist UI', () => {
-  test('UI-020 — Active state transitions', async ({ page }) => {
+  test('UI-020 — Active state transitions', { tag: '@smoke' }, async ({ page }) => {
     await page.goto('/');
 
     const form = page.locator('form');

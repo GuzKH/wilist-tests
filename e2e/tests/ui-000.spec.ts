@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
+import * as allure from 'allure-js-commons';    
 
-test('UI-000 — Default state of the add form', async ({ page }) => {
+
+test('UI-000 Default state of the add form', { tag: '@smoke' }, async ({ page }) => {
+  
+    await allure.severity(allure.Severity.CRITICAL);
+
   // Start from a clean store so the default empty-list state is deterministic.
   const response = await page.request.get('/wish-items');
   const serverItems = await response.json();

@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import * as allure from 'allure-js-commons';
 
 test.describe('wilist UI', () => {
-  test('UI-006 — Link is not a valid URL(KNOWN BUG)', async ({ page }) => {
+  test('UI-006 — Link is not a valid URL(KNOWN BUG)', { tag: '@regression' }, async ({ page }) => {
     await page.goto('/');
 
     const form = page.locator('form');

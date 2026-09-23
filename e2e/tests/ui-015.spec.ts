@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import * as allure from 'allure-js-commons';
 
 test.describe('wilist UI', () => {
   // KNOWN BUG: double-clicking "Add item" can create duplicate items.
-  test('UI-015 — Double click on Add item', async ({ page }) => {
+  test('UI-015 — Double click on Add item', { tag: '@regression' }, async ({ page }) => {
     await page.goto('/');
 
     const form = page.locator('form');

@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import * as allure from 'allure-js-commons';
 
 test.describe('wilist UI', () => {
-  test('UI-007 — Two items with the same Name', async ({ page }) => {
+  test('UI-007 — Two items with the same Name', { tag: '@regression' }, async ({ page }) => {
     await page.goto('/');
 
     const form = page.locator('form');

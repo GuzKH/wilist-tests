@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import * as allure from 'allure-js-commons';
 
 test.describe('wilist UI', () => {
-  test('UI-022 — Archived state transitions', async ({ page }) => {
+  test('UI-022 — Archived state transitions', { tag: '@regression' }, async ({ page }) => {
     await page.goto('/');
 
     const form = page.locator('form');

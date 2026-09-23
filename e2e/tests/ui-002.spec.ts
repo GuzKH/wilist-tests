@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
+import * as allure from 'allure-js-commons';  
 
-test('UI-002 — Create item with Name + Link', async ({ page }) => {
+test('UI-002 — Create item with Name + Link', { tag: '@regression' }, async ({ page }) => {
   const name = `ui-002-${Date.now()}`;
   const link = 'https://example.com';
 

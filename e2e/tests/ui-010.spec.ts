@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import * as allure from 'allure-js-commons';
 
 test.describe('wilist UI', () => {
-  test('UI-010 — List survives a page reload', async ({ page }) => {
+  test('UI-010 — List survives a page reload', { tag: '@regression' }, async ({ page }) => {
     await page.goto('/');
 
     const form = page.locator('form');

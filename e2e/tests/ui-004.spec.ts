@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test';
+import * as allure from 'allure-js-commons';  
 
 test.describe('wilist UI', () => {
-  test('UI-004 — Name containing only whitespace', async ({ page }) => {
+  test('UI-004 — Name containing only whitespace', { tag: '@regression' }, async ({ page }) => {
     await page.goto('/');
 
     const form = page.locator('form');
