@@ -3,6 +3,8 @@ import * as allure from 'allure-js-commons';
 
 
 test('UI-003 — Submit with empty Name', { tag: '@regression' }, async ({ page }) => {
+  // TODO: set severity from the Priority column in ui-cases.md
+  await allure.severity(allure.Severity.CRITICAL);
   await page.goto('/');
 
   const form = page.locator('form');

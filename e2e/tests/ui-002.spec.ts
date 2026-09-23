@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import * as allure from 'allure-js-commons';  
 
 test('UI-002 — Create item with Name + Link', { tag: '@regression' }, async ({ page }) => {
+  // TODO: set severity from the Priority column in ui-cases.md
+  await allure.severity(allure.Severity.NORMAL);
   const name = `ui-002-${Date.now()}`;
   const link = 'https://example.com';
 

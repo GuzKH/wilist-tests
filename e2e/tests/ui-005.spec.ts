@@ -3,6 +3,8 @@ import * as allure from 'allure-js-commons';
 
 test.describe('wilist UI', () => {
   test('UI-005 — Long values and special characters', { tag: '@regression' }, async ({ page }) => {
+    // TODO: set severity from the Priority column in ui-cases.md
+    await allure.severity(allure.Severity.MINOR);
     await page.goto('/');
 
     const form = page.locator('form');
