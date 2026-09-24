@@ -107,15 +107,31 @@ jobs:
 
       # chromium only, on purpose: the variable under test here is the OS,
       # not the browser engine (that's the separate webkit/firefox track).
+      # allure-js-commons + the allure-playwright reporter are already wired
+      # into playwright.config.ts, so this produces e2e/allure-results same
+      # as any other run — nothing extra to configure here.
       - name: Run Playwright tests
         working-directory: e2e
         env:
           BASE_URL: http://localhost:${{ env.WILIST_PORT }}
         run: npx playwright test --project=chromium
 
-      - name: Upload Playwright HTML report
+      # Version pinned to match ci.yml's allure-report job — keep them in sync.
+      - name: Install Allure CLI
+        if: always()
+        run: npm install -g allure-commandline@2.29.0
+
+      # Each OS gets its own self-contained report here (unlike ci.yml's
+      # allure-report job, which merges api+ui into one report — merging
+      # three different OS runs into a single report wouldn't mean much).
+      - name: Generate Allure report
+        if: always()
+        working-directory: e2e
+        run: allure generate allure-results --clean -o allure-report
+
+      - name: Upload Allure report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ matrix.os }}
-          path: e2e/playwright-report
+          name: allure-report-${{ matrix.os }}
+          path: e2e/allure-report
