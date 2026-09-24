@@ -1,0 +1,121 @@
+name: Cross-platform E2E
+
+# Manual only: this is an OS matrix (ubuntu/macos/windows), and GitHub bills
+# macOS runners at 10x and Windows at 2x the Linux rate. Running it on every
+# push like the main `ci.yml` would be slow and burn minutes fast, so it's
+# opt-in via the Actions tab instead.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: '1.27.1'
+  NODE_VERSION: '20'
+  WILIST_PORT: '8081'
+
+jobs:
+  e2e-cross-os:
+    strategy:
+      # fail-fast: false — a failure on one OS (e.g. Windows) shouldn't cancel
+      # the other two runs; we want results from all three regardless.
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            ext: ''
+          - os: macos-latest
+            ext: ''
+          - os: windows-latest
+            # Go builds `wilist.exe` on Windows, not `wilist` — needed below
+            # wherever the binary name/path is used.
+            ext: '.exe'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - name: Checkout wilist-tests
+        uses: actions/checkout@v4
+
+      - name: Checkout wilist app
+        uses: actions/checkout@v4
+        with:
+          repository: ppeerr/wilist
+          token: ${{ secrets.PPEERR_PAT }}
+          path: wilist-app
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: wilist-app/web/package-lock.json
+
+      - name: Build React UI
+        working-directory: wilist-app/web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build wilist binary
+        working-directory: wilist-app
+        run: go build -o wilist${{ matrix.ext }} .
+
+      # `shell: bash` pins the script to Git Bash on the Windows runner too
+      # (it ships with actions/checkout), so the same curl/sleep-loop syntax
+      # works identically on all three OSes instead of writing it twice.
+      - name: Start wilist
+        shell: bash
+        working-directory: wilist-app
+        run: |
+          chmod +x ./wilist${{ matrix.ext }}
+          PORT=${{ env.WILIST_PORT }} ./wilist${{ matrix.ext }} &
+          for i in $(seq 1 30); do
+            if curl -sf "http://localhost:${{ env.WILIST_PORT }}/health" > /dev/null; then
+              echo "wilist is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "wilist did not become healthy in time" >&2
+          exit 1
+
+      - name: Install Playwright deps
+        working-directory: e2e
+        run: npm ci
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+
+      - name: Install Playwright browsers
+        working-directory: e2e
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps
+
+      # chromium only, on purpose: the variable under test here is the OS,
+      # not the browser engine (that's the separate webkit/firefox track).
+      - name: Run Playwright tests
+        working-directory: e2e
+        env:
+          BASE_URL: http://localhost:${{ env.WILIST_PORT }}
+        run: npx playwright test --project=chromium
+
+      - name: Upload Playwright HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ matrix.os }}
+          path: e2e/playwright-report
