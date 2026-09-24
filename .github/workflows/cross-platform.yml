@@ -22,16 +22,30 @@ env:
 jobs:
   e2e-cross-os:
     strategy:
-      # fail-fast: false — a failure on one OS (e.g. Windows) shouldn't cancel
-      # the other two runs; we want results from all three regardless.
+      # fail-fast: false — one failing combination shouldn't cancel the rest;
+      # we want results from every combination regardless.
       fail-fast: false
       matrix:
+        # Every combination is spelled out explicitly (not a plain
+        # os x browser cross product) so each row can carry its own `ext`.
+        # webkit/firefox only on ubuntu for now — cheapest runner, just to
+        # prove the browser dimension works before spending macOS/Windows
+        # minutes on it too.
         include:
           - os: ubuntu-latest
+            browser: chromium
+            ext: ''
+          - os: ubuntu-latest
+            browser: webkit
+            ext: ''
+          - os: ubuntu-latest
+            browser: firefox
             ext: ''
           - os: macos-latest
+            browser: chromium
             ext: ''
           - os: windows-latest
+            browser: chromium
             # Go builds `wilist.exe` on Windows, not `wilist` — needed below
             # wherever the binary name/path is used.
             ext: '.exe'
@@ -105,8 +119,6 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps
 
-      # chromium only, on purpose: the variable under test here is the OS,
-      # not the browser engine (that's the separate webkit/firefox track).
       # allure-js-commons + the allure-playwright reporter are already wired
       # into playwright.config.ts, so this produces e2e/allure-results same
       # as any other run — nothing extra to configure here.
@@ -114,16 +126,16 @@ jobs:
         working-directory: e2e
         env:
           BASE_URL: http://localhost:${{ env.WILIST_PORT }}
-        run: npx playwright test --project=chromium
+        run: npx playwright test --project=${{ matrix.browser }}
 
       # Version pinned to match ci.yml's allure-report job — keep them in sync.
       - name: Install Allure CLI
         if: always()
         run: npm install -g allure-commandline@2.29.0
 
-      # Each OS gets its own self-contained report here (unlike ci.yml's
-      # allure-report job, which merges api+ui into one report — merging
-      # three different OS runs into a single report wouldn't mean much).
+      # Each OS+browser combination gets its own self-contained report here
+      # (unlike ci.yml's allure-report job, which merges api+ui into one —
+      # merging different OS/browser runs into one report wouldn't mean much).
       - name: Generate Allure report
         if: always()
         working-directory: e2e
@@ -133,5 +145,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report-${{ matrix.os }}
+          name: allure-report-${{ matrix.os }}-${{ matrix.browser }}
           path: e2e/allure-report
