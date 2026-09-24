@@ -117,7 +117,17 @@ jobs:
       - name: Install Playwright browsers
         working-directory: e2e
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps
+        run: npx playwright install
+
+      # Runs every time, cache hit or not: system libraries (e.g. WebKit's
+      # libevent) aren't part of the cached ~/.cache/ms-playwright directory
+      # above, they're OS packages on a fresh runner VM — so gating this
+      # behind the same cache-hit check (as `--with-deps` did before) skips
+      # them on a cache hit and crashes webkit. Known trap, documented in
+      # "CI - GitHub Actions" (Obsidian) from the ci.yml chromium-only note.
+      - name: Install Playwright system deps
+        working-directory: e2e
+        run: npx playwright install-deps
 
       # allure-js-commons + the allure-playwright reporter are already wired
       # into playwright.config.ts, so this produces e2e/allure-results same
