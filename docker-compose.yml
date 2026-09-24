@@ -1,0 +1,25 @@
+services:
+  # Go app under test. Assumes wilist is checked out as a sibling of this
+  # repo: ~/projects/wilist and ~/projects/wilist-tests side by side.
+  # (Dockerfile lives in that separate, third-party repo: ppeerr/wilist.)
+  wilist:
+    build:
+      context: ../wilist
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # Playwright tests: waits for wilist to report healthy before starting,
+  # then hits it over the compose network by service name (not localhost).
+  wilist-tests:
+    build:
+      context: ./e2e
+    environment:
+      BASE_URL: http://wilist:8080
+    depends_on:
+      wilist:
+        condition: service_healthy

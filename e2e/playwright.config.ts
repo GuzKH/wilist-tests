@@ -28,8 +28,10 @@ export default defineConfig({
 ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* wilist: бинарник с go:embed отдаёт UI и API на одном origin */
-    baseURL: 'http://localhost:8081',
+    /* wilist: бинарник с go:embed отдаёт UI и API на одном origin.
+       BASE_URL переопределяется в docker-compose (там wilist доступен
+       по имени сервиса, а не localhost); локальный запуск не меняется. */
+    baseURL: process.env.BASE_URL ?? 'http://localhost:8081',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
