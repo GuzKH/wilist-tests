@@ -4,7 +4,7 @@ Test suite for wilist, a wishlist application (Go API + React UI). The app repos
 
 ## Structure
 
-- `postman/` — API tests: Postman collection and environment
+- `postman/` — API tests: Postman collection and environment, see [FIXTURES.md](./postman/FIXTURES.md)
 - `e2e/` — UI tests: Playwright
 - `docker-compose.yml` — runs the app and the e2e suite together in containers, see [DOCKER.md](./DOCKER.md)
 - `.github/workflows/ci.yml` — per-commit CI, see [ci_readme.md](./.github/workflows/ci_readme.md)
@@ -23,13 +23,19 @@ Docker Compose — see [DOCKER.md](./DOCKER.md)).
 2. Select the `wilist local` environment
 3. Run the collection via Collection Runner
 
-Note: the `regression` folder relies on `smoke` running first.
+Both the `smoke` and `regression` folders create and clean up their own test
+data independently — see [postman/FIXTURES.md](./postman/FIXTURES.md) for
+how that works.
 
 ## Running UI tests (Playwright)
 
     cd e2e
     npm install
     npx playwright test
+
+All specs import `test`/`expect` from `./fixtures`, not `@playwright/test`
+directly — a custom fixture waits for the initial item list to finish
+loading before each test body runs, since the list loads asynchronously.
 
 ## Docker
 
