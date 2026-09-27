@@ -23,6 +23,17 @@ Workflow: `.github/workflows/ci.yml`
 
 The app is built once in `build` and reused — `api-tests` and `e2e-ui-tests` don't rebuild it.
 
+## Browser coverage
+
+`e2e-ui-tests` runs Playwright with `--project=chromium` only. webkit and firefox are configured in `playwright.config.ts` but excluded from this per-commit workflow — kept out deliberately for CI-minute cost, not because of a technical blocker (see "Manual cross-platform run" below).
+
+## Manual cross-platform run
+
+A separate workflow, `.github/workflows/cross-platform.yml`, `workflow_dispatch` only — not part of per-commit CI, since macOS/Windows runners cost 10x/2x a Linux one.
+
+- Runs the same Playwright suite across `ubuntu-latest` × chromium/webkit/firefox, `macos-latest` × chromium, `windows-latest` × chromium
+- This is the only way to run webkit/firefox for now — folding them into `ci.yml` was considered and declined (27.09), purely for CI-minute cost
+
 ## Secrets
 
 - `PPEERR_PAT` — personal access token (classic, scope `repo`) from the `GuzKH` account, used to check out the private `ppeerr/wilist` repo. Stored in Settings → Secrets and variables → Actions of the `wilist-tests` repo.
@@ -52,3 +63,4 @@ The final Allure report (`allure-report`) is an artifact of the last job — dow
 
 - `newman`, `newman-reporter-allure`, and `allure-commandline` versions are pinned in the workflow — update them manually and verify locally when bumping
 - The Playwright browser cache key is based on `e2e/package-lock.json` — it self-invalidates when the Playwright version changes
+- The Allure report has to be downloaded manually from Artifacts; no auto-publish
