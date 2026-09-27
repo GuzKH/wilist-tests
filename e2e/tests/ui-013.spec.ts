@@ -1,11 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import * as allure from 'allure-js-commons';
 
 test.describe('wilist UI', () => {
   test('UI-013 — Item ordering in the list', { tag: '@regression' }, async ({ page }) => {
     // TODO: set severity from the Priority column in ui-cases.md
     await allure.severity(allure.Severity.CRITICAL);
-    await page.goto('/');
 
     const form = page.locator('form');
     const nameInput = form.getByRole('textbox', { name: 'Name' });

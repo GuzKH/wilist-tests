@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import * as allure from 'allure-js-commons';  
 
 test('UI-002 — Create item with Name + Link', { tag: '@regression' }, async ({ page }) => {
@@ -6,8 +6,6 @@ test('UI-002 — Create item with Name + Link', { tag: '@regression' }, async ({
   await allure.severity(allure.Severity.NORMAL);
   const name = `ui-002-${Date.now()}`;
   const link = 'https://example.com';
-
-  await page.goto('/');
 
   const form = page.locator('form');
   await form.getByRole('textbox', { name: 'Name' }).fill(name);

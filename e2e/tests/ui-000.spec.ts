@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import * as allure from 'allure-js-commons';    
 
 
@@ -13,8 +13,6 @@ test('UI-000 Default state of the add form', { tag: '@smoke' }, async ({ page })
   for (const item of serverItems) {
     await page.request.delete(`/wish-items/${item.id}`);
   }
-
-  await page.goto('/');
 
   // Everything related to the add form is scoped to the form.
   // State selects also exist inside each list item.

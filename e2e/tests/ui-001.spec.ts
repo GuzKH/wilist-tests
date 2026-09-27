@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import * as allure from 'allure-js-commons';   
 
 test('UI-001 — Create item with Name only', { tag: '@smoke' },async ({ page }) => {
@@ -6,8 +6,6 @@ test('UI-001 — Create item with Name only', { tag: '@smoke' },async ({ page })
   await allure.severity(allure.Severity.CRITICAL);
   
   const name = `ui-001-${Date.now()}`;
-
-  await page.goto('/');
   await page.getByRole('textbox', { name: 'Name' }).fill(name);
   await page.getByRole('button', { name: 'Add item' }).click();
 
