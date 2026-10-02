@@ -1,6 +1,6 @@
 # wilist-tests
 
-Test suite for the [wilist](https://github.com/ppeerr/wilist) project — a wishlist application (Go API + React UI).
+Test suite for the [wilist](https://github.com/ppeerr/wilist) project (private repo) — a wishlist application (Go API + React UI).
 
 ## Structure
 
