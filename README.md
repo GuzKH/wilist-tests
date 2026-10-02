@@ -1,6 +1,6 @@
 # wilist-tests
 
-Test suite for the [wilist](https://github.com/ppeerr/wilist) project (private repo) — a wishlist application (Go API + React UI).
+Test suite for wilist, a wishlist application (Go API + React UI). The app repository is private; CI checks it out with a read-only token.
 
 ## Structure
 
