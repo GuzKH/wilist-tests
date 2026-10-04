@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  # Nightly run: catches regressions in the ppeerr/wilist app itself,
+  # not only changes in this test repo. 03:17 UTC — off the round hour,
+  # when GitHub's scheduler is busiest.
+  schedule:
+    - cron: '17 3 * * *'
 
 permissions:
   contents: read
