@@ -14,6 +14,12 @@ test('UI-000 Default state of the add form', { tag: '@smoke' }, async ({ page })
     await page.request.delete(`/wish-items/${item.id}`);
   }
 
+  // The fixture opened '/' BEFORE we cleared the store, so the page still
+  // shows the old items. Reload to render the now-empty list.
+  await page.reload();
+  // Wait for the async list load to finish (same check as in fixtures.ts).
+  await expect(page.getByText('Loading…')).toHaveCount(0);
+
   // Everything related to the add form is scoped to the form.
   // State selects also exist inside each list item.
   const form = page.locator('form');
