@@ -79,7 +79,7 @@ The final Allure report (`allure-report`) is an artifact of the last job — dow
 ## Known limitations
 
 - `PPEERR_PAT` is a classic token with scope `repo` — it gives read **and write** access to every repo the `GuzKH` account can reach. Planned replacement: a read-only deploy key on `ppeerr/wilist` (needs the owner of `ppeerr/wilist` to add it)
-- CI runs only on changes to this repo — changes in the `ppeerr/wilist` app itself are not tested automatically yet (planned: nightly scheduled run)
+- CI runs only on changes to this repo - nightly at 03:17 UTC (`schedule`) — tests the latest `ppeerr/wilist` even when this repo doesn't change; the tested app commit is shown on the run's Summary page
 - `cross-platform.yml` still has its own copy of the build/start steps (it needs the `.exe` suffix on Windows) — not yet moved to the composite action
 - `newman`, `newman-reporter-allure`, and `allure-commandline` versions are pinned in the workflow — update them manually and verify locally when bumping
 - The Playwright browser cache key is based on `e2e/package-lock.json` — it self-invalidates when the Playwright version changes
