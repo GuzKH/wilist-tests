@@ -1,0 +1,70 @@
+name: Build and start wilist
+description: >
+  Checks out the private ppeerr/wilist app, builds it (React UI + Go binary)
+  and starts it in the background, waiting until /health responds.
+  Replaces the separate build job + public binary artifact.
+
+# Composite actions can't read secrets directly — the token is passed in
+# from the workflow as an input instead.
+inputs:
+  token:
+    description: Token with read access to ppeerr/wilist
+    required: true
+  port:
+    description: Port the app listens on
+    required: true
+  go-version:
+    required: true
+  node-version:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout wilist app
+      uses: actions/checkout@v4
+      with:
+        repository: ppeerr/wilist
+        token: ${{ inputs.token }}
+        path: wilist-app
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: wilist-app/web/package-lock.json
+
+    - name: Build React UI
+      shell: bash
+      working-directory: wilist-app/web
+      run: |
+        npm ci
+        npm run build
+
+    - name: Build wilist binary
+      shell: bash
+      working-directory: wilist-app
+      run: go build -o wilist .
+
+    # Background process keeps running for the rest of the job.
+    # Poll /health instead of a fixed sleep — more reliable on a slow runner.
+    - name: Start wilist
+      shell: bash
+      working-directory: wilist-app
+      run: |
+        PORT=${{ inputs.port }} ./wilist &
+        for i in $(seq 1 30); do
+          if curl -sf "http://localhost:${{ inputs.port }}/health" > /dev/null; then
+            echo "wilist is up"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "wilist did not become healthy in time" >&2
+        exit 1
