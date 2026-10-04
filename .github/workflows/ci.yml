@@ -60,3 +60,106 @@ jobs:
             -e postman/wilist.postman_environment.json \
             --env-var baseUrl=localhost:${{ env.WILIST_PORT }} \
             --reporters cli,allure \
+            --reporter-allure-resultsDir allure-results-api
+
+      - name: Upload API allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-api
+          path: allure-results-api
+
+  e2e-ui-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout wilist-tests
+        uses: actions/checkout@v4
+
+      # Build + start the private app inside this job (see
+      # .github/actions/build-and-start-wilist). No binary artifact is
+      # uploaded, so nothing from ppeerr/wilist is downloadable from this public repo.
+      - name: Build and start wilist
+        uses: ./.github/actions/build-and-start-wilist
+        with:
+          token: ${{ secrets.PPEERR_PAT }}
+          port: ${{ env.WILIST_PORT }}
+          go-version: ${{ env.GO_VERSION }}
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install Playwright deps
+        working-directory: e2e
+        run: npm ci
+
+      # Cache the downloaded browser binaries themselves (the slow part of
+      # `playwright install`), keyed off the lockfile so it busts on version bumps
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
+
+      - name: Install Playwright browsers
+        working-directory: e2e
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps
+
+      # No continue-on-error here either — same reasoning as the Postman job
+      - name: Run Playwright tests
+        working-directory: e2e
+        # --fail-on-flaky-tests: a test that passes only on retry fails the run,
+        # so retries can no longer hide a real failure behind a green CI
+        run: npx playwright test --project=chromium --fail-on-flaky-tests
+
+      - name: Upload UI allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-ui
+          path: e2e/allure-results
+
+  # Merges results from both test jobs into one combined Allure report.
+  # needs + if: always() — runs even if one of the test jobs failed.
+  allure-report:
+    needs: [api-tests, e2e-ui-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # continue-on-error here (not on the test steps) is fine: a missing
+      # artifact from one job just means a smaller report, not a false-green build
+      - name: Download API allure results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: allure-results-api
+          path: allure-results/api
+
+      - name: Download UI allure results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: allure-results-ui
+          path: allure-results/ui
+
+      - name: Install Allure CLI
+        run: npm install -g allure-commandline@2.29.0
+
+      - name: Generate combined Allure report
+        run: |
+          mkdir -p allure-results/api allure-results/ui
+          allure generate allure-results/api allure-results/ui --clean -o allure-report
+
+      - name: Upload Allure HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report
