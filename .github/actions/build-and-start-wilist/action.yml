@@ -28,6 +28,15 @@ runs:
         token: ${{ inputs.token }}
         path: wilist-app
 
+    # Writes the exact app commit under test to the run's Summary page,
+    # so every result (especially a nightly failure) maps to an app version.
+    - name: Record tested app commit
+      shell: bash
+      working-directory: wilist-app
+      run: |
+        echo "### Tested app" >> "$GITHUB_STEP_SUMMARY"
+        echo "ppeerr/wilist @ \`$(git rev-parse HEAD)\`" >> "$GITHUB_STEP_SUMMARY"
+
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
