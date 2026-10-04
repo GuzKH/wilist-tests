@@ -176,7 +176,9 @@ jobs:
       # No continue-on-error here either — same reasoning as the Postman job
       - name: Run Playwright tests
         working-directory: e2e
-        run: npx playwright test --project=chromium
+        # --fail-on-flaky-tests: a test that passes only on retry fails the run,
+        # so retries can no longer hide a real failure behind a green CI
+        run: npx playwright test --project=chromium --fail-on-flaky-tests
 
       - name: Upload UI allure results
         if: always()
