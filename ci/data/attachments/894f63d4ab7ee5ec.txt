@@ -1,0 +1,6 @@
+{
+  "id": "99",
+  "name": "Power bank updated",
+  "webLink": "https://example.com/updated",
+  "state": "purchased"
+}

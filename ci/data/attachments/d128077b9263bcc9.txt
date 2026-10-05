@@ -1,0 +1,9 @@
+{
+  "id": "999",
+  "name": "Наушники Sony 🎧",
+  "webLink": "https://example.com",
+  "state": "wanted",
+  "createdDate": "не дата",
+  "updatedDate": "2000-01-01T00:00:00Z",
+  "foo": "bar"
+}

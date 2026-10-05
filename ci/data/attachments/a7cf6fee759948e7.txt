@@ -1,0 +1,1 @@
+level: log, messages: WISH-GET-009: /wish-items/ returned 200

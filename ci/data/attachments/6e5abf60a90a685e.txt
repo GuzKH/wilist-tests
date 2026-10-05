@@ -1,0 +1,5 @@
+{
+  "name": "Power bank",
+  "webLink": "https://www.coolblue.nl/product/967057/",
+  "state": "wanted"
+}

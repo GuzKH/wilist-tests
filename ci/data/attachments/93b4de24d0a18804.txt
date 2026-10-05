@@ -1,0 +1,5 @@
+{
+  "name": "purchased item state",
+  "webLink": "не ссылка",
+  "state": "purchased"
+}
