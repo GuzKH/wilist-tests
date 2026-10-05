@@ -131,7 +131,7 @@ jobs:
           name: allure-results-ui
           path: e2e/allure-results
 
-    # Merges results from both test jobs into one combined Allure report.
+      # Merges results from both test jobs into one combined Allure report.
   # needs + if: always() — runs even if one of the test jobs failed.
   allure-report:
     needs: [api-tests, e2e-ui-tests]
@@ -147,6 +147,18 @@ jobs:
       group: allure-publish
       cancel-in-progress: false
     steps:
+      # History step 1 of 2: check out the gh-pages branch, where the previous
+      # published report lives (including its history/ folder with past runs).
+      # Only on main — PR reports are one-off artifacts without history.
+      # continue-on-error: on the very first publish gh-pages doesn't exist yet.
+      - name: Get previous published report
+        if: github.ref == 'refs/heads/main'
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
       # continue-on-error here (not on the test steps) is fine: a missing
       # artifact from one job just means a smaller report, not a false-green build
       - name: Download API allure results
@@ -162,6 +174,20 @@ jobs:
         with:
           name: allure-results-ui
           path: allure-results/ui
+
+      # History step 2 of 2: Allure reads past runs from a history/ folder inside
+      # a results directory. Copy it from the previous report into the API results
+      # folder (any results folder works — Allure merges them into one report).
+      - name: Add previous history to results
+        if: github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p allure-results/api
+          if [ -d gh-pages/ci/history ]; then
+            cp -r gh-pages/ci/history allure-results/api/history
+            echo "History copied from the previous report"
+          else
+            echo "No previous history yet - this report starts a new one"
+          fi
 
       - name: Install Allure CLI
         run: npm install -g allure-commandline@2.29.0
