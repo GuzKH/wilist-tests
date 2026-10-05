@@ -131,13 +131,21 @@ jobs:
           name: allure-results-ui
           path: e2e/allure-results
 
-  # Merges results from both test jobs into one combined Allure report.
+    # Merges results from both test jobs into one combined Allure report.
   # needs + if: always() — runs even if one of the test jobs failed.
   allure-report:
     needs: [api-tests, e2e-ui-tests]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Only this job may write to the repo: it pushes the report to the gh-pages branch.
+    # Test jobs keep the read-only permissions set at the top of the file.
+    permissions:
+      contents: write
+    # One publish at a time, so two runs (e.g. nightly + push) don't overwrite gh-pages in parallel
+    concurrency:
+      group: allure-publish
+      cancel-in-progress: false
     steps:
       # continue-on-error here (not on the test steps) is fine: a missing
       # artifact from one job just means a smaller report, not a false-green build
@@ -168,3 +176,16 @@ jobs:
         with:
           name: allure-report
           path: allure-report
+
+      # Publish only from main (push, nightly, manual run).
+      # PR reports stay as downloadable artifacts so they don't mix into the published report.
+      - name: Publish report to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: allure-report
+          # Each workflow publishes into its own folder, so ci.yml and cross-platform.yml
+          # don't overwrite each other's reports on the gh-pages branch
+          destination_dir: ci
