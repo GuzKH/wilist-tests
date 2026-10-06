@@ -148,7 +148,8 @@ jobs:
           name: allure-results-${{ matrix.os }}-${{ matrix.browser }}
           path: e2e/allure-results
 
-  # Builds one Allure report per OS + browser combination from the matrix results.
+    # Builds one Allure report per OS + browser combination from the matrix results
+  # and, on main, publishes them to GitHub Pages under cross-platform/.
   # Runs once, on ubuntu, after all matrix jobs, even if some of them failed:
   # failures are exactly what the reports are for.
   allure-reports:
@@ -156,7 +157,25 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Only this job may write to the repo (it pushes to gh-pages); matrix jobs stay read-only
+    permissions:
+      contents: write
+    # Same group as the publish job in ci.yml: publishes from both workflows
+    # wait for each other instead of pushing to gh-pages at the same time
+    concurrency:
+      group: allure-publish
+      cancel-in-progress: false
     steps:
+      # Previously published reports (with their history/ folders) live on gh-pages.
+      # Only on main; continue-on-error: the very first publish has no cross-platform/ yet.
+      - name: Get previous published reports
+        if: github.ref == 'refs/heads/main'
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: gh-pages
+          path: gh-pages
+
       # Every allure-results-<os>-<browser> artifact lands in its own folder:
       # results/allure-results-ubuntu-latest-chromium/, results/allure-results-macos-latest-chromium/, ...
       - name: Download all matrix results
@@ -169,19 +188,95 @@ jobs:
       - name: Install Allure CLI
         run: npm install -g allure-commandline@2.29.0
 
-      # One self-contained report per combination: site/<os>-<browser>/
+      # For each combination: add history, failure categories, environment and
+      # executor info to its results, then generate a report into site/<os>-<browser>/.
       - name: Generate one report per combination
+        env:
+          PPEERR_PAT: ${{ secrets.PPEERR_PAT }}
         run: |
+          # Shared values for all combinations
+          APP_COMMIT=$(git ls-remote "https://x-access-token:${PPEERR_PAT}@github.com/ppeerr/wilist.git" HEAD | cut -f1)
+          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
+          RUN_URL="${REPO_URL}/actions/runs/${{ github.run_id }}"
+          RUN_NUMBER="${{ github.run_number }}"
+
+          # Failure categories, same rules as in ci.yml — keep them in sync
+          cat > categories.json <<'EOF'
+          [
+            {"name": "Infrastructure: app not reachable", "matchedStatuses": ["failed", "broken"], "messageRegex": ".*(ECONNREFUSED|ERR_CONNECTION_REFUSED|ECONNRESET|socket hang up).*"},
+            {"name": "Timeouts", "matchedStatuses": ["failed", "broken"], "messageRegex": ".*([Tt]imeout|timed out).*"},
+            {"name": "Product defects", "matchedStatuses": ["failed"]},
+            {"name": "Test defects", "matchedStatuses": ["broken"]}
+          ]
+          EOF
+
           mkdir -p site
           for dir in results/allure-results-*; do
             [ -d "$dir" ] || continue   # no results at all (every matrix job failed early)
-            combo="${dir#results/allure-results-}"
+            combo="${dir#results/allure-results-}"   # e.g. ubuntu-latest-chromium
+            os="${combo%-*}"                          # e.g. ubuntu-latest
+            browser="${combo##*-}"                    # e.g. chromium
             echo "Generating report for ${combo}"
+
+            # History: copy from the previous published report of the same combination (main only)
+            if [ -d "gh-pages/cross-platform/${combo}/history" ]; then
+              cp -r "gh-pages/cross-platform/${combo}/history" "$dir/history"
+              echo "  history copied from the previous report"
+            fi
+
+            # Failure categories
+            cp categories.json "$dir/categories.json"
+
+            # Environment: what exactly was tested
+            {
+              echo "OS=${os}"
+              echo "UI.Browser=${browser}"
+              echo "App.Repository=ppeerr/wilist"
+              echo "App.Commit=${APP_COMMIT}"
+              echo "Tests.Commit=${{ github.sha }}"
+              echo "Tests.Branch=${{ github.ref_name }}"
+              echo "Go.Version=${{ env.GO_VERSION }}"
+              echo "Node.Version=${{ env.NODE_VERSION }}"
+            } > "$dir/environment.properties"
+
+            # Executor: run number + link back to this run's logs
+            printf '{"name":"GitHub Actions","type":"github","url":"%s","buildOrder":%s,"buildName":"Cross-platform #%s","buildUrl":"%s","reportUrl":"https://guzkh.github.io/wilist-tests/cross-platform/%s/","reportName":"wilist-tests: %s"}\n' \
+              "$REPO_URL" "$RUN_NUMBER" "$RUN_NUMBER" "$RUN_URL" "$combo" "$combo" > "$dir/executor.json"
+
             allure generate "$dir" --clean -o "site/${combo}"
           done
+
+      # Table of contents for cross-platform/: one link per combination + link to the main report
+      - name: Build index page
+        run: |
+          {
+            echo '<!doctype html><html><head><meta charset="utf-8"><title>wilist-tests: cross-platform reports</title></head><body>'
+            echo '<h1>wilist-tests: cross-platform reports</h1>'
+            echo "<p>Latest run: <a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">Cross-platform #${{ github.run_number }}</a></p>"
+            echo '<ul>'
+            for d in site/*/; do
+              combo=$(basename "$d")
+              echo "<li><a href=\"${combo}/\">${combo}</a></li>"
+            done
+            echo '</ul>'
+            echo '<p><a href="../ci/">Main CI report (API + UI, chromium)</a></p>'
+            echo '</body></html>'
+          } > index.html
+          mv index.html site/index.html
 
       - name: Upload reports
         uses: actions/upload-artifact@v4
         with:
           name: allure-reports-cross-platform
           path: site
+
+      # Publish only from main, into cross-platform/ on gh-pages.
+      # The action cleans only that folder, so ci/ (the main report) is not touched.
+      - name: Publish reports to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: site
+          destination_dir: cross-platform
