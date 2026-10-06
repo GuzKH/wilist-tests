@@ -45,6 +45,20 @@ See [DOCKER.md](./DOCKER.md) for running the app and tests together in container
 
 See [.github/workflows/ci_readme.md](./.github/workflows/ci_readme.md) for how the per-commit workflow and the manual cross-platform matrix work.
 
+## Test report
+
+Latest Allure report (API + UI, published from `main` after every run):
+**https://guzkh.github.io/wilist-tests/ci/**
+
+What you'll find there:
+- results of both suites in one place — Postman (API) and Playwright (UI, chromium)
+- **Trend** — results of previous runs, so you can see when a test started failing
+- **Environment** — which app commit and test commit were tested, and what triggered the run
+- **Executors** — link back to the CI run with full logs
+- **Categories** — failures grouped by cause: infrastructure, timeouts, product defects, test defects
+
+Reports from pull requests are not published — they are available as the `allure-report` artifact of the CI run.
+
 ## Test documentation
 
 The full case table, expected results and known API behaviour are kept in the
