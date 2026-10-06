@@ -189,6 +189,25 @@ jobs:
             echo "No previous history yet - this report starts a new one"
           fi
 
+                # Executor info: shows in the report where it came from (CI run number + link
+      # to the run's logs) and labels the Trend graph with run numbers.
+      # Allure reads executor.json from any results folder.
+      - name: Add executor info
+        run: |
+          mkdir -p allure-results/api
+          cat > allure-results/api/executor.json <<EOF
+          {
+            "name": "GitHub Actions",
+            "type": "github",
+            "url": "${{ github.server_url }}/${{ github.repository }}",
+            "buildOrder": ${{ github.run_number }},
+            "buildName": "CI #${{ github.run_number }}",
+            "buildUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+            "reportUrl": "https://guzkh.github.io/wilist-tests/ci/",
+            "reportName": "wilist-tests Allure report"
+          }
+          EOF
+
       - name: Install Allure CLI
         run: npm install -g allure-commandline@2.29.0
 
