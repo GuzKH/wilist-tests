@@ -1,1 +1,1 @@
-[]
+[{"values":["ppeerr/wilist"],"name":"App.Repository"},{"values":["1c267066e4dea237278a91bbecbcba2fb5aaa937"],"name":"App.Commit"},{"values":["8077f41b85061fc2f47b2bcc7f5c27f554c72bea"],"name":"Tests.Commit"},{"values":["main"],"name":"Tests.Branch"},{"values":["push"],"name":"Run.Trigger"},{"values":["ubuntu24"],"name":"Runner.Image"},{"values":["chromium"],"name":"UI.Browser"},{"values":["1.27.1"],"name":"Go.Version"},{"values":["20"],"name":"Node.Version"}]
