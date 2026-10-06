@@ -208,6 +208,28 @@ jobs:
           }
           EOF
 
+     # Environment info: shows in the report what exactly was tested.
+      # The app commit is looked up again here (latest commit on ppeerr/wilist main),
+      # so in the rare case of a push to the app during this run it can differ from
+      # what the test jobs used. The exact tested commit is always in the run's Summary.
+      - name: Add environment info
+        env:
+          PPEERR_PAT: ${{ secrets.PPEERR_PAT }}
+        run: |
+          mkdir -p allure-results/api
+          APP_COMMIT=$(git ls-remote "https://x-access-token:${PPEERR_PAT}@github.com/ppeerr/wilist.git" HEAD | cut -f1)
+          cat > allure-results/api/environment.properties <<EOF
+          App.Repository=ppeerr/wilist
+          App.Commit=${APP_COMMIT}
+          Tests.Commit=${{ github.sha }}
+          Tests.Branch=${{ github.ref_name }}
+          Run.Trigger=${{ github.event_name }}
+          Runner.Image=${ImageOS}
+          UI.Browser=chromium
+          Go.Version=${{ env.GO_VERSION }}
+          Node.Version=${{ env.NODE_VERSION }}
+          EOF
+
       - name: Install Allure CLI
         run: npm install -g allure-commandline@2.29.0
 
