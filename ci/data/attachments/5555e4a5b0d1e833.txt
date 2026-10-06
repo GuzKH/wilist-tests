@@ -1,0 +1,2 @@
+level: log, messages: Teardown: удаляю 44 объект(ов) прогона muwh0vnc
+level: log, messages: Teardown: удаление завершено
