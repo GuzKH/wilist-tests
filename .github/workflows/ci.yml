@@ -131,7 +131,7 @@ jobs:
           name: allure-results-ui
           path: e2e/allure-results
 
-      # Merges results from both test jobs into one combined Allure report.
+  # Merges results from both test jobs into one combined Allure report.
   # needs + if: always() — runs even if one of the test jobs failed.
   allure-report:
     needs: [api-tests, e2e-ui-tests]
@@ -189,7 +189,7 @@ jobs:
             echo "No previous history yet - this report starts a new one"
           fi
 
-                # Executor info: shows in the report where it came from (CI run number + link
+       # Executor info: shows in the report where it came from (CI run number + link
       # to the run's logs) and labels the Trend graph with run numbers.
       # Allure reads executor.json from any results folder.
       - name: Add executor info
@@ -228,6 +228,36 @@ jobs:
           UI.Browser=chromium
           Go.Version=${{ env.GO_VERSION }}
           Node.Version=${{ env.NODE_VERSION }}
+          EOF
+
+      # Failure categories: group failed tests by cause in the report.
+      # Rules are checked top to bottom, the first match wins. Infrastructure
+      # problems go first, so an app that didn't start isn't reported as a product bug.
+      # 'EOF' in quotes: the text below is written as-is, without shell substitutions.
+      - name: Add failure categories
+        run: |
+          mkdir -p allure-results/api
+          cat > allure-results/api/categories.json <<'EOF'
+          [
+            {
+              "name": "Infrastructure: app not reachable",
+              "matchedStatuses": ["failed", "broken"],
+              "messageRegex": ".*(ECONNREFUSED|ERR_CONNECTION_REFUSED|ECONNRESET|socket hang up).*"
+            },
+            {
+              "name": "Timeouts",
+              "matchedStatuses": ["failed", "broken"],
+              "messageRegex": ".*([Tt]imeout|timed out).*"
+            },
+            {
+              "name": "Product defects",
+              "matchedStatuses": ["failed"]
+            },
+            {
+              "name": "Test defects",
+              "matchedStatuses": ["broken"]
+            }
+          ]
           EOF
 
       - name: Install Allure CLI
