@@ -139,21 +139,49 @@ jobs:
         run: npx playwright test --project=${{ matrix.browser }}
 
       # Version pinned to match ci.yml's allure-report job — keep them in sync.
-      - name: Install Allure CLI
-        if: always()
-        run: npm install -g allure-commandline@2.29.0
-
-      # Each OS+browser combination gets its own self-contained report here
-      # (unlike ci.yml's allure-report job, which merges api+ui into one —
-      # merging different OS/browser runs into one report wouldn't mean much).
-      - name: Generate Allure report
-        if: always()
-        working-directory: e2e
-        run: allure generate allure-results --clean -o allure-report
-
-      - name: Upload Allure report
+      # Raw results only: reports are generated in one place (the allure-reports
+      # job below), so the matrix jobs stay "tests only" and need no extra tools.
+      - name: Upload Allure results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report-${{ matrix.os }}-${{ matrix.browser }}
-          path: e2e/allure-report
+          name: allure-results-${{ matrix.os }}-${{ matrix.browser }}
+          path: e2e/allure-results
+
+  # Builds one Allure report per OS + browser combination from the matrix results.
+  # Runs once, on ubuntu, after all matrix jobs, even if some of them failed:
+  # failures are exactly what the reports are for.
+  allure-reports:
+    needs: e2e-cross-os
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Every allure-results-<os>-<browser> artifact lands in its own folder:
+      # results/allure-results-ubuntu-latest-chromium/, results/allure-results-macos-latest-chromium/, ...
+      - name: Download all matrix results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: allure-results-*
+          path: results
+
+      # Version pinned to match ci.yml's allure-report job — keep them in sync.
+      - name: Install Allure CLI
+        run: npm install -g allure-commandline@2.29.0
+
+      # One self-contained report per combination: site/<os>-<browser>/
+      - name: Generate one report per combination
+        run: |
+          mkdir -p site
+          for dir in results/allure-results-*; do
+            [ -d "$dir" ] || continue   # no results at all (every matrix job failed early)
+            combo="${dir#results/allure-results-}"
+            echo "Generating report for ${combo}"
+            allure generate "$dir" --clean -o "site/${combo}"
+          done
+
+      - name: Upload reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-reports-cross-platform
+          path: site
