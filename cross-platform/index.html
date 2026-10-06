@@ -1,12 +1,30 @@
-<!doctype html><html><head><meta charset="utf-8"><title>wilist-tests: cross-platform reports</title></head><body>
-<h1>wilist-tests: cross-platform reports</h1>
-<p>Latest run: <a href="https://github.com/GuzKH/wilist-tests/actions/runs/37487185736">Cross-platform #6</a></p>
-<ul>
-<li><a href="macos-latest-chromium/">macos-latest-chromium</a></li>
-<li><a href="ubuntu-latest-chromium/">ubuntu-latest-chromium</a></li>
-<li><a href="ubuntu-latest-firefox/">ubuntu-latest-firefox</a></li>
-<li><a href="ubuntu-latest-webkit/">ubuntu-latest-webkit</a></li>
-<li><a href="windows-latest-chromium/">windows-latest-chromium</a></li>
-</ul>
-<p><a href="../ci/">Main CI report (API + UI, chromium)</a></p>
-</body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>wilist-tests: cross-platform reports</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; line-height: 1.5; color: #222; }
+    a { color: #0969da; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #ddd; }
+    .ok { color: #1a7f37; font-weight: 600; }
+    .fail { color: #cf222e; font-weight: 600; }
+    .muted { color: #666; }
+  </style>
+</head>
+<body>
+  <h1>wilist-tests: cross-platform reports</h1>
+  <p>UI tests (Playwright) on different OS and browsers, one Allure report per combination.</p>
+  <p class="muted">Latest run: <a href="https://github.com/GuzKH/wilist-tests/actions/runs/37497253075">Cross-platform #7</a></p>
+  <table>
+    <tr><th>OS + browser</th><th>Result</th></tr>
+    <tr><td><a href="macos-latest-chromium/">macos-latest-chromium</a></td><td><span class="ok">&#10003; 20/20 passed</span></td></tr>
+    <tr><td><a href="ubuntu-latest-chromium/">ubuntu-latest-chromium</a></td><td><span class="ok">&#10003; 20/20 passed</span></td></tr>
+    <tr><td><a href="ubuntu-latest-firefox/">ubuntu-latest-firefox</a></td><td><span class="ok">&#10003; 20/20 passed</span></td></tr>
+    <tr><td><a href="windows-latest-chromium/">windows-latest-chromium</a></td><td><span class="ok">&#10003; 20/20 passed</span></td></tr>
+  </table>
+  <p><a href="../">All reports</a> · <a href="../ci/">Main CI report (API + UI, chromium)</a></p>
+</body>
+</html>
