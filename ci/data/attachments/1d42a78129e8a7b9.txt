@@ -1,0 +1,1 @@
+{"id":"5","name":"fx-muxya9w0-[WISH-GET-002] GET wish-items - existing item by id","webLink":"https://example.com/fixture","createdDate":"2026-10-07T10:14:10.515840995Z","updatedDate":"2026-10-07T10:14:10.515840995Z","state":"wanted"}

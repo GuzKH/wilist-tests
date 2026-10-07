@@ -1,0 +1,2 @@
+level: log, messages: Teardown: удаляю 44 объект(ов) прогона muxya9w0
+level: log, messages: Teardown: удаление завершено
