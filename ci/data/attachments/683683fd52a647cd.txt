@@ -1,2 +1,0 @@
-level: log, messages: Teardown: удаляю 44 объект(ов) прогона muzeeig7
-level: log, messages: Teardown: удаление завершено

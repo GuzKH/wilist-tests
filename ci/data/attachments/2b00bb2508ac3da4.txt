@@ -1,0 +1,2 @@
+level: log, messages: Teardown: удаляю 44 объект(ов) прогона mv0trtzt
+level: log, messages: Teardown: удаление завершено
