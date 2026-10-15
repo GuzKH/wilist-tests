@@ -1,1 +1,0 @@
-{"id":"40","name":"Power bank","webLink":"","createdDate":"2026-10-14T08:41:32.636729042Z","updatedDate":"2026-10-14T08:41:32.640723382Z","state":"wanted"}

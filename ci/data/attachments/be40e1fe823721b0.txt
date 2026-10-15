@@ -1,0 +1,2 @@
+level: log, messages: Teardown: удаляю 44 объект(ов) прогона mv99m5ql
+level: log, messages: Teardown: удаление завершено
