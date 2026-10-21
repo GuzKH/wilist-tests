@@ -1,5 +1,0 @@
-{
-    "name": "Power bank",
-    "state": "wanted",
-    "webLink": null
-}

@@ -1,4 +1,0 @@
-{
-  "name": "duplicate body check",
-  "state": "wanted"
-}

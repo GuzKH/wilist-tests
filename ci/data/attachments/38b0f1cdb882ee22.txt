@@ -1,5 +1,0 @@
-{
-  "name": "idempotency check",
-  "webLink": "https://example.com",
-  "state": "wanted"
-}

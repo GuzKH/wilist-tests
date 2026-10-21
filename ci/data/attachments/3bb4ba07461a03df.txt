@@ -1,4 +1,0 @@
-{
-    "name": "ghost item",
-    "state": "wanted"
-}

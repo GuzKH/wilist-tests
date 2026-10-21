@@ -1,1 +1,0 @@
-{"name": "content type check", "state": "wanted"}
