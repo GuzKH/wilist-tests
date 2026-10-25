@@ -1,0 +1,4 @@
+{
+  "name": "Power bank",
+  "state": "test"
+}

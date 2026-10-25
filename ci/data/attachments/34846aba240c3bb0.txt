@@ -1,0 +1,5 @@
+{
+  "name": "archived item state",
+  "webLink": "",
+  "state": "archived"
+}

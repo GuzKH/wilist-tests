@@ -1,0 +1,12 @@
+if (!pm.collectionVariables.get('runId')) {
+  pm.collectionVariables.set('runId', Date.now().toString(36));
+}
+if (!pm.collectionVariables.get('createdIds')) {
+  pm.collectionVariables.set('createdIds', JSON.stringify([]));
+}
+
+checkItem = (item) => {
+  ['id', 'name', 'webLink', 'createdDate', 'updatedDate', 'state']
+    .forEach(f => pm.expect(item, `поле ${f}`).to.have.property(f));
+  pm.expect(['wanted', 'purchased', 'archived'], 'state из enum').to.include(item.state);
+};

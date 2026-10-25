@@ -1,0 +1,4 @@
+{
+  "name": "full replace check",
+  "state": "wanted"
+}

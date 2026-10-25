@@ -1,0 +1,5 @@
+{
+  "name": "wrong item state",
+  "webLink": "",
+  "state": "test"
+}
