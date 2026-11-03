@@ -1,1 +1,0 @@
-{"id":"10","name":"purchased item state","webLink":"не ссылка","createdDate":"2026-11-02T11:00:26.108057637Z","updatedDate":"2026-11-02T11:00:26.108057637Z","state":"purchased"}
