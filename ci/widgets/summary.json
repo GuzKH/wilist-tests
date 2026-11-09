@@ -1,1 +1,1 @@
-{"reportName":"wilist-tests Allure report","testRuns":[],"statistic":{"failed":0,"broken":0,"skipped":0,"passed":59,"unknown":0,"total":59},"time":{"start":1794133162229,"stop":1794133193910,"duration":31681,"minDuration":21,"maxDuration":2115,"sumDuration":23951}}
+{"reportName":"wilist-tests Allure report","testRuns":[],"statistic":{"failed":0,"broken":0,"skipped":0,"passed":59,"unknown":0,"total":59},"time":{"start":1794223684067,"stop":1794223716470,"duration":32403,"minDuration":15,"maxDuration":1856,"sumDuration":18746}}
