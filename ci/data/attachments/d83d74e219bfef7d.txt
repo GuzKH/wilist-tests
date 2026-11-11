@@ -1,0 +1,1 @@
+{"id":"8","name":"Power bank","webLink":"https://www.coolblue.nl/product/967057/","createdDate":"2026-11-11T10:54:35.843118843Z","updatedDate":"2026-11-11T10:54:35.843118843Z","state":"wanted"}
