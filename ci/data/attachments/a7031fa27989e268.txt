@@ -1,1 +1,0 @@
-{"id":"28","name":"Наушники Sony 🎧","webLink":"https://example.com","createdDate":"2026-11-12T11:02:33.971650199Z","updatedDate":"2026-11-12T11:02:33.971650199Z","state":"wanted"}
