@@ -1,2 +1,0 @@
-level: log, messages: Teardown: удаляю 44 объект(ов) прогона mww4fz3d
-level: log, messages: Teardown: удаление завершено
